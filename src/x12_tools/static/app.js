@@ -16,6 +16,9 @@
   const samplesDataEl = document.getElementById("samples-data");
   const SAMPLES = samplesDataEl ? JSON.parse(samplesDataEl.textContent) : [];
 
+  const segmentNamesDataEl = document.getElementById("segment-names-data");
+  const SEGMENT_NAMES = segmentNamesDataEl ? JSON.parse(segmentNamesDataEl.textContent) : {};
+
   fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -103,41 +106,115 @@
     return `${release}.${ts.transaction_set_id}.${sender}-${receiver}.${date}`;
   }
 
-  // The lists shown on screen, as a pipe-delimited table meant to be pasted
-  // into a convention draft: one row per segment -- identifier | segment |
-  // element count -- across every transaction set type in this interchange.
-  function plainTextList(entry) {
-    const facts = entry.facts;
-    const lines = [];
+  const REQUIREMENT_OPTIONS = [
+    { value: "", label: "—" },
+    { value: "M", label: "M — Mandatory" },
+    { value: "O", label: "O — Optional" },
+    { value: "C", label: "C — Conditional" },
+  ];
 
-    for (const ts of entry.inventory.transaction_sets) {
-      const id = tsListId(ts, facts);
-      for (const seg of ts.segments) {
-        lines.push(`${id} | ${seg.segment_id} | ${seg.element_count}`);
-      }
+  function requirementSelect() {
+    const select = el(
+      "select",
+      { class: "editable-select" },
+      REQUIREMENT_OPTIONS.map((opt) => el("option", { value: opt.value, text: opt.label }))
+    );
+    return el("td", {}, [select]);
+  }
+
+  // One transaction set type's segment list as an editable convention table:
+  // Segment, Elements and Used come from the EDI (read-only); Segment name is
+  // pre-filled from a local X12 reference when known (editable either way);
+  // Requirement and Notes start blank for you to fill in. "Copy table" reads
+  // the table's current state (including your edits) as tab-separated text,
+  // ready to paste into a spreadsheet -- the identifier is repeated on every
+  // row so a pasted table still says which convention it's for.
+  function conventionTable(ts, facts) {
+    const id = tsListId(ts, facts);
+    const wrap = el("div", { class: "convention-wrap" });
+    wrap.appendChild(el("h3", { class: "ts-id", text: id }));
+
+    const headerCells = ["Segment", "Elements", "Used", "Segment name", "Requirement", "Notes"].map(
+      (label) => el("th", { text: label })
+    );
+    const thead = el("thead", {}, [el("tr", {}, headerCells)]);
+
+    const rows = ts.segments.map((seg) => {
+      const nameCell = el("td", { contenteditable: "true", class: "editable" });
+      nameCell.textContent = SEGMENT_NAMES[seg.segment_id] || "";
+      const notesCell = el("td", { contenteditable: "true", class: "editable" });
+      return el("tr", {}, [
+        el("td", { text: seg.segment_id, class: "mono" }),
+        el("td", { text: String(seg.element_count), class: "mono" }),
+        el("td", { text: String(seg.populated_count), class: "mono" }),
+        nameCell,
+        requirementSelect(),
+        notesCell,
+      ]);
+    });
+    const tbody = el("tbody", {}, rows);
+
+    const table = el("table", { class: "convention-table" }, [thead, tbody]);
+    wrap.appendChild(el("div", { class: "convention-table-wrap" }, [table]));
+    wrap.appendChild(copyButtons(id, table));
+    return wrap;
+  }
+
+  function cellValue(td) {
+    const select = td.querySelector("select");
+    return select ? select.value : td.textContent.trim();
+  }
+
+  const TABLE_HEADER = ["Identifier", "Segment", "Elements", "Used", "Segment name", "Requirement", "Notes"];
+
+  // The table's current state (including edits) as rows of plain strings,
+  // header first -- the one source both export formats read from.
+  function tableRows(id, table) {
+    const rows = [TABLE_HEADER];
+    for (const tr of table.tBodies[0].rows) {
+      rows.push([id, ...Array.from(tr.cells).map(cellValue)]);
     }
+    return rows;
+  }
 
+  function toTSV(rows) {
+    return rows.map((r) => r.join("\t")).join("\n");
+  }
+
+  // A GitHub-flavored Markdown table. Pipes in a cell (unlikely here, but a
+  // hand-typed note could have one) are escaped so they don't break the row.
+  function toMarkdown(rows) {
+    const escape = (cell) => cell.replace(/\|/g, "\\|");
+    const [header, ...body] = rows;
+    const lines = [
+      `| ${header.map(escape).join(" | ")} |`,
+      `| ${header.map(() => "---").join(" | ")} |`,
+      ...body.map((row) => `| ${row.map(escape).join(" | ")} |`),
+    ];
     return lines.join("\n");
   }
 
-  function copyBlock(text) {
-    const wrap = el("div", { class: "copy-wrap" });
-    const btn = el("button", { type: "button", class: "ghost", text: "Copy list" });
-    const pre = el("pre", { text });
+  function copyButton(label, getText) {
+    const btn = el("button", { type: "button", class: "ghost", text: label });
     btn.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(getText());
         btn.textContent = "Copied!";
       } catch {
         btn.textContent = "Copy failed — select and copy manually";
       }
       setTimeout(() => {
-        btn.textContent = "Copy list";
+        btn.textContent = label;
       }, 1500);
     });
-    wrap.appendChild(btn);
-    wrap.appendChild(pre);
-    return wrap;
+    return btn;
+  }
+
+  function copyButtons(id, table) {
+    return el("div", { class: "copy-buttons" }, [
+      copyButton("Copy table", () => toTSV(tableRows(id, table))),
+      copyButton("Copy as Markdown", () => toMarkdown(tableRows(id, table))),
+    ]);
   }
 
   function renderInterchange(entry, showHeading) {
@@ -169,7 +246,9 @@
       return panel;
     }
 
-    panel.appendChild(copyBlock(plainTextList(entry)));
+    for (const ts of entry.inventory.transaction_sets) {
+      panel.appendChild(conventionTable(ts, entry.facts));
+    }
     return panel;
   }
 

@@ -15,12 +15,18 @@ segments (``ISA``/``GS`` first, ``GE``/``IEA`` last) plus everything seen
 inside any ``ST``..``SE`` loop of that type, deduplicated, in first-appearance
 order within each part.
 
-Each entry also carries an element count: the most elements x12-tidy saw
-after that segment's identifier in any occurrence within the group. A
-convention needs to know how many elements a segment actually carries, not
-just that it showed up; taking the max (rather than, say, the first
-occurrence's count) means an optional trailing element that's only populated
-some of the time still gets counted.
+Each entry also carries two counts:
+
+* ``element_count`` -- the most elements x12-tidy saw after that segment's
+  identifier in any single occurrence within the group. Taking the max
+  (rather than, say, the first occurrence's count) means an optional
+  trailing element that's only present some of the time still gets counted.
+* ``populated_count`` -- how many distinct element *positions* ever held a
+  non-empty value, across every occurrence. A position that exists (it's
+  inside the element count) but was blank or space-padded in every
+  occurrence -- e.g. an unused optional ISA element, or a composite left
+  empty -- doesn't count here, so a convention author can tell "this
+  segment carries 5 elements" from "only 4 of them were ever actually used."
 
 Built on x12-tidy's own mechanical segment/element split
 (:mod:`x12_tidy.envelope.structure`) -- nothing here validates or judges the
@@ -41,22 +47,23 @@ _ENVELOPE_HEADER = ("ISA", "GS")
 #: Envelope segments that close a functional group/interchange, in the order
 #: they appear after every transaction set's own content.
 _ENVELOPE_TRAILER = ("GE", "IEA")
-#: ISA is a fixed-format segment -- always exactly ISA01..ISA16, regardless of
-#: release -- and it never appears in x12-tidy's segment split (which starts
-#: at GS), so its element count is a constant rather than something walked.
-_ISA_ELEMENT_COUNT = 16
 
 
 @dataclass(frozen=True)
 class SegmentEntry:
-    """One segment ID and how many elements it carries, at most, across every
-    occurrence seen."""
+    """One segment ID with its element count and how many of those elements
+    ever carried a value, across every occurrence seen."""
 
     segment_id: str
     element_count: int
+    populated_count: int
 
     def as_dict(self) -> dict[str, Any]:
-        return {"segment_id": self.segment_id, "element_count": self.element_count}
+        return {
+            "segment_id": self.segment_id,
+            "element_count": self.element_count,
+            "populated_count": self.populated_count,
+        }
 
 
 @dataclass(frozen=True)
@@ -94,13 +101,22 @@ class SegmentInventory:
 class _Group:
     segments: list[str] = field(default_factory=list)
     element_counts: dict[str, int] = field(default_factory=dict)
+    populated_positions: dict[str, set[int]] = field(default_factory=dict)
     releases: list[str] = field(default_factory=list)
     seen_releases: set[str] = field(default_factory=set)
 
-    def add(self, segment_id: str, element_count: int) -> None:
+    def add(self, segment_id: str, elements: tuple[bytes, ...]) -> None:
+        """Record one occurrence of ``segment_id``. ``elements`` is that
+        occurrence's data elements only (the identifier already stripped),
+        1-indexed by position to match X12's own element numbering."""
         if segment_id not in self.element_counts:
             self.segments.append(segment_id)
-        self.element_counts[segment_id] = max(self.element_counts.get(segment_id, 0), element_count)
+            self.populated_positions[segment_id] = set()
+        self.element_counts[segment_id] = max(self.element_counts.get(segment_id, 0), len(elements))
+        positions = self.populated_positions[segment_id]
+        for position, raw in enumerate(elements, start=1):
+            if raw.decode("ascii", errors="replace").strip():
+                positions.add(position)
 
     def add_release(self, release: str) -> None:
         if release and release not in self.seen_releases:
@@ -108,7 +124,10 @@ class _Group:
             self.releases.append(release)
 
     def entries(self) -> list[SegmentEntry]:
-        return [SegmentEntry(sid, self.element_counts[sid]) for sid in self.segments]
+        return [
+            SegmentEntry(sid, self.element_counts[sid], len(self.populated_positions[sid]))
+            for sid in self.segments
+        ]
 
 
 def build_inventory(payload: bytes) -> SegmentInventory:
@@ -128,11 +147,14 @@ def build_inventory(payload: bytes) -> SegmentInventory:
         return SegmentInventory([])
 
     # split_segments starts at GS (the ISA line is a separate, upstream
-    # concern) -- so ISA is folded in explicitly, with its fixed element count.
+    # concern) -- so ISA is folded in explicitly. x12-tidy's own ISA
+    # decomposition already split it into ISA01..ISA16, so the same
+    # populated-position logic applies without re-splitting anything.
     segments = drop_null_rows(split_segments(payload))
 
     envelope = _Group()
-    envelope.add("ISA", _ISA_ELEMENT_COUNT)
+    if decomposition.elements:
+        envelope.add("ISA", decomposition.elements)
     groups: dict[str, _Group] = {}
     group_order: list[str] = []
     current_ts_id: str | None = None
@@ -141,32 +163,34 @@ def build_inventory(payload: bytes) -> SegmentInventory:
     for segment in segments:
         elements = split_elements(segment, element_separator)
         segment_id = elements[0].decode("ascii", errors="replace")
-        element_count = len(elements) - 1  # elements[0] is the identifier, not a data element
+        data_elements = tuple(elements[1:])  # elements[0] is the identifier, not a data element
 
         if segment_id == "GS":
             current_release = (
-                elements[8].decode("ascii", errors="replace").strip() if len(elements) > 8 else ""
+                data_elements[7].decode("ascii", errors="replace").strip()
+                if len(data_elements) > 7
+                else ""
             )
-            envelope.add(segment_id, element_count)
+            envelope.add(segment_id, data_elements)
             continue
 
         if segment_id == "ST":
             current_ts_id = (
-                elements[1].decode("ascii", errors="replace") if len(elements) > 1 else "UNKNOWN"
+                data_elements[0].decode("ascii", errors="replace") if data_elements else "UNKNOWN"
             )
             group = groups.setdefault(current_ts_id, _Group())
             if current_ts_id not in group_order:
                 group_order.append(current_ts_id)
-            group.add(segment_id, element_count)
+            group.add(segment_id, data_elements)
             group.add_release(current_release)
             continue
 
         if current_ts_id is not None:
-            groups[current_ts_id].add(segment_id, element_count)
+            groups[current_ts_id].add(segment_id, data_elements)
             if segment_id == "SE":
                 current_ts_id = None
         else:
-            envelope.add(segment_id, element_count)
+            envelope.add(segment_id, data_elements)
 
     envelope_entries = {e.segment_id: e for e in envelope.entries()}
     header = [envelope_entries[s] for s in _ENVELOPE_HEADER if s in envelope_entries]

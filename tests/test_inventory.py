@@ -15,6 +15,10 @@ def _counts(entries: list[SegmentEntry]) -> dict[str, int]:
     return {e.segment_id: e.element_count for e in entries}
 
 
+def _populated(entries: list[SegmentEntry]) -> dict[str, int]:
+    return {e.segment_id: e.populated_count for e in entries}
+
+
 def test_envelope_segments_are_folded_into_each_transaction_sets_list(two_orders_edi: str) -> None:
     result = cleanse(two_orders_edi)[0]
     assert result.payload is not None
@@ -33,6 +37,13 @@ def test_envelope_segments_are_folded_into_each_transaction_sets_list(two_orders
     assert counts["ISA"] == 16  # fixed -- ISA01..ISA16, never walked
     assert counts["GS"] == 8  # PO, SENDERGS, RECEIVERID, 20240101, 1200, 1, X, 004010
 
+    populated = _populated(ts.segments)
+    assert populated["GS"] == 8  # none of GS's elements are blank here
+    # ISA02 and ISA04 are the space-padded "authorization/security information"
+    # values -- blank because ISA01/ISA03 are "00" (none present) -- so 14 of
+    # ISA's 16 fixed elements actually carry a value in this fixture.
+    assert populated["ISA"] == 14
+
 
 def test_two_occurrences_of_same_transaction_set_are_merged(two_orders_edi: str) -> None:
     result = cleanse(two_orders_edi)[0]
@@ -47,6 +58,42 @@ def test_two_occurrences_of_same_transaction_set_are_merged(two_orders_edi: str)
     # segments (ISA/GS header, GE/IEA trailer) are folded around them.
     assert _ids(ts.segments) == ["ISA", "GS", "ST", "BEG", "N1", "SE", "PO1", "GE", "IEA"]
     assert ts.releases == ["004010"]
+
+
+def test_populated_count_excludes_blank_elements(two_orders_edi: str) -> None:
+    result = cleanse(two_orders_edi)[0]
+    assert result.payload is not None
+    inventory = build_inventory(result.payload)
+    ts = inventory.transaction_sets[0]
+
+    counts = _counts(ts.segments)
+    populated = _populated(ts.segments)
+    # BEG*00*NE*PO0001**20240101 -- 5 elements, but the 4th (between PO0001 and
+    # the date) is empty in both occurrences.
+    assert counts["BEG"] == 5
+    assert populated["BEG"] == 4
+    # N1*ST*Warehouse -- both elements populated, nothing to exclude.
+    assert counts["N1"] == populated["N1"] == 2
+
+
+def test_populated_count_is_a_union_across_occurrences() -> None:
+    # Occurrence 1 leaves position 4 blank; occurrence 2 fills it in. The
+    # position should count as populated overall -- it's used at least once,
+    # even though a single occurrence never shows both facts at once.
+    edi = (
+        "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *"
+        "240101*1200*U*00401*000000005*0*P*:~"
+        "GS*PO*SENDERGS*RECEIVERID*20240101*1200*1*X*004010~"
+        "ST*850*0001~BEG*00*NE*PO0001**20240101~SE*3*0001~"
+        "ST*850*0002~BEG*00*NE*PO0002*RUSH*20240101~SE*3*0002~"
+        "GE*2*1~IEA*1*000000005~"
+    )
+    result = cleanse(edi)[0]
+    assert result.payload is not None
+    inventory = build_inventory(result.payload)
+
+    populated = _populated(inventory.transaction_sets[0].segments)
+    assert populated["BEG"] == 5  # all 5 positions were populated in at least one occurrence
 
 
 def test_element_count_is_the_max_seen_across_occurrences() -> None:
