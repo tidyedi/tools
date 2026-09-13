@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from x12_tidy import tidy
+from x12_tidy import EnvelopeFacts, tidy
 
 from x12_tools.diagnostics import DiagnosticView, severity_counts, view_diagnostics
 
@@ -27,6 +27,55 @@ from x12_tools.diagnostics import DiagnosticView, severity_counts, view_diagnost
 #: 0-255 and the first 256 code points, so any byte sequence survives a
 #: ``.decode("latin-1").encode("latin-1")`` round trip unchanged.
 TEXT_CODEC = "latin-1"
+
+
+def _s(value: bytes) -> str:
+    return value.decode(TEXT_CODEC, errors="replace").strip()
+
+
+@dataclass(frozen=True)
+class EnvelopeFactsView:
+    """The envelope facts a companion guide needs beyond the segment list
+    itself -- who it's from/to and what release it's written at. Pulled
+    straight from x12-tidy's own :class:`~x12_tidy.EnvelopeFacts`, which
+    ``tidy()`` already computes; this just decodes and trims it for display."""
+
+    sender_qualifier: str
+    sender_id: str
+    receiver_qualifier: str
+    receiver_id: str
+    interchange_date: str
+    interchange_time: str
+    interchange_version: str  # ISA12, e.g. "00401"
+    usage_indicator: str  # "P" / "T" / "I"
+    group_versions: list[str]  # GS08 per functional group, e.g. ["004010"]
+
+    @classmethod
+    def from_facts(cls, facts: EnvelopeFacts) -> EnvelopeFactsView:
+        return cls(
+            sender_qualifier=_s(facts.sender_qualifier),
+            sender_id=_s(facts.sender_id),
+            receiver_qualifier=_s(facts.receiver_qualifier),
+            receiver_id=_s(facts.receiver_id),
+            interchange_date=_s(facts.interchange_date),
+            interchange_time=_s(facts.interchange_time),
+            interchange_version=_s(facts.interchange_version),
+            usage_indicator=_s(facts.usage_indicator),
+            group_versions=[_s(v) for v in facts.group_versions],
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "sender_qualifier": self.sender_qualifier,
+            "sender_id": self.sender_id,
+            "receiver_qualifier": self.receiver_qualifier,
+            "receiver_id": self.receiver_id,
+            "interchange_date": self.interchange_date,
+            "interchange_time": self.interchange_time,
+            "interchange_version": self.interchange_version,
+            "usage_indicator": self.usage_indicator,
+            "group_versions": self.group_versions,
+        }
 
 
 @dataclass(frozen=True)
@@ -39,6 +88,7 @@ class CleanResult:
     cleansed_text: str | None  # None iff not recovered
     payload: bytes | None  # the same bytes, for inventory.py to walk
     diagnostics: list[DiagnosticView]
+    facts: EnvelopeFactsView | None  # None iff not recovered
 
     @property
     def severity_counts(self) -> dict[str, int]:
@@ -52,6 +102,7 @@ class CleanResult:
             "cleansed_text": self.cleansed_text,
             "severity_counts": self.severity_counts,
             "diagnostics": [d.as_dict() for d in self.diagnostics],
+            "facts": self.facts.as_dict() if self.facts is not None else None,
         }
 
 
@@ -72,6 +123,7 @@ def cleanse(source: str | bytes) -> list[CleanResult]:
                 ),
                 payload=result.payload,
                 diagnostics=view_diagnostics(list(result.diagnostics)),
+                facts=EnvelopeFactsView.from_facts(result.facts) if result.facts is not None else None,
             )
         )
     return results

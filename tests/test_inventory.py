@@ -7,13 +7,14 @@ from x12_tools.engine import cleanse
 from x12_tools.inventory import build_inventory
 
 
-def test_envelope_segments_exclude_isa_and_transaction_content(two_orders_edi: str) -> None:
+def test_envelope_segments_include_isa(two_orders_edi: str) -> None:
     result = cleanse(two_orders_edi)[0]
     assert result.payload is not None
     inventory = build_inventory(result.payload)
-    # split_segments starts at GS (ISA is the envelope header, handled
-    # separately by x12-tidy) -- so the envelope group is GS/GE/IEA only.
-    assert inventory.envelope_segments == ["GS", "GE", "IEA"]
+    # x12-tidy's split_segments starts at GS (it treats the ISA line as a
+    # separate, upstream concern) -- but ISA is still part of the envelope
+    # for inventory purposes, so build_inventory adds it back explicitly.
+    assert inventory.envelope_segments == ["ISA", "GS", "GE", "IEA"]
 
 
 def test_two_occurrences_of_same_transaction_set_are_merged(two_orders_edi: str) -> None:

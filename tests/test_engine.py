@@ -16,6 +16,17 @@ def test_cleanse_conformant_input_is_clean(two_orders_edi: str) -> None:
     assert result.payload is not None
 
 
+def test_cleanse_exposes_sender_receiver_and_version(two_orders_edi: str) -> None:
+    result = cleanse(two_orders_edi)[0]
+    assert result.facts is not None
+    assert result.facts.sender_qualifier == "ZZ"
+    assert result.facts.sender_id == "SENDER"
+    assert result.facts.receiver_qualifier == "ZZ"
+    assert result.facts.receiver_id == "RECEIVER"
+    assert result.facts.interchange_version == "00401"
+    assert result.facts.group_versions == ["004010"]
+
+
 def test_cleanse_unrecoverable_input() -> None:
     results = cleanse("not an EDI file at all")
     assert len(results) == 1

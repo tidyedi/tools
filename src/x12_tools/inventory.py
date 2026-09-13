@@ -105,6 +105,10 @@ def build_inventory(payload: bytes) -> SegmentInventory:
     segments = drop_null_rows(split_segments(payload))
 
     envelope = _Group()
+    # split_segments starts at GS (the ISA line is handled separately by
+    # x12-tidy, upstream of this walk) -- but ISA is still part of the
+    # envelope for inventory purposes, so it's added explicitly here.
+    envelope.add("ISA")
     groups: dict[str, _Group] = {}
     group_order: list[str] = []
     current_ts_id: str | None = None

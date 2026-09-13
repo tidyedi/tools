@@ -120,6 +120,65 @@
     );
   }
 
+  function factsLine(facts) {
+    const from = [facts.sender_qualifier, facts.sender_id].filter(Boolean).join(" ");
+    const to = [facts.receiver_qualifier, facts.receiver_id].filter(Boolean).join(" ");
+    return el("p", {
+      class: "hint",
+      text:
+        `From ${from || "—"} to ${to || "—"} · interchange version ${facts.interchange_version || "—"}` +
+        ` · usage ${facts.usage_indicator || "—"}` +
+        (facts.group_versions.length ? ` · group release ${facts.group_versions.join(", ")}` : ""),
+    });
+  }
+
+  // The same information as the chips above, as plain text meant to be
+  // copied into a companion-guide draft: envelope facts, then one line per
+  // transaction set type with its release and segments.
+  function plainTextList(entry) {
+    const inv = entry.inventory;
+    const facts = entry.facts;
+    const lines = [];
+    if (facts) {
+      const from = [facts.sender_qualifier, facts.sender_id].filter(Boolean).join(" ");
+      const to = [facts.receiver_qualifier, facts.receiver_id].filter(Boolean).join(" ");
+      lines.push(`From: ${from || "—"}`);
+      lines.push(`To: ${to || "—"}`);
+      lines.push(`Interchange version: ${facts.interchange_version || "—"}`);
+      lines.push(`Usage: ${facts.usage_indicator || "—"}`);
+      if (facts.group_versions.length) lines.push(`Group release: ${facts.group_versions.join(", ")}`);
+      lines.push("");
+    }
+    lines.push(`Envelope: ${inv.envelope_segments.join(", ")}`);
+    for (const ts of inv.transaction_sets) {
+      lines.push("");
+      const release = ts.releases.length ? `, release ${ts.releases.join("/")}` : "";
+      lines.push(`${ts.transaction_set_id} (${ts.occurrences} occurrence${ts.occurrences === 1 ? "" : "s"}${release})`);
+      lines.push(`  ${ts.segments.join(", ")}`);
+    }
+    return lines.join("\n");
+  }
+
+  function copyBlock(text) {
+    const wrap = el("div", { class: "copy-wrap" });
+    const btn = el("button", { type: "button", class: "ghost", text: "Copy list" });
+    const pre = el("pre", { text });
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = "Copied!";
+      } catch {
+        btn.textContent = "Copy failed — select and copy manually";
+      }
+      setTimeout(() => {
+        btn.textContent = "Copy list";
+      }, 1500);
+    });
+    wrap.appendChild(btn);
+    wrap.appendChild(pre);
+    return wrap;
+  }
+
   function renderInterchange(entry) {
     const panel = el("div", { class: "panel" });
     panel.appendChild(el("h2", { text: `Interchange ${entry.index}` }));
@@ -133,6 +192,7 @@
       return panel;
     }
 
+    if (entry.facts) panel.appendChild(factsLine(entry.facts));
     panel.appendChild(severityCountsRow(entry.severity_counts));
     const diags = diagnosticsList(entry.diagnostics);
     if (diags) panel.appendChild(diags);
@@ -156,6 +216,9 @@
       group.appendChild(segmentChips(ts.segments));
       panel.appendChild(group);
     }
+
+    panel.appendChild(el("h3", { text: "Segment list" }));
+    panel.appendChild(copyBlock(plainTextList(entry)));
 
     const details = el("details", { class: "cleansed-wrap" });
     details.appendChild(el("summary", { text: "Cleansed interchange" }));
