@@ -7,11 +7,20 @@ front end, no account, nothing you paste is stored, logged, or sent anywhere.
 ## Tools
 
 - **Segment inventory** (`/segments`) — paste an EDI interchange, cleanse it
-  with [x12-tidy](https://github.com/tidyedi/x12-tidy), and get the unique
-  segments it contains, grouped by transaction set type (ST01, e.g. `850`).
-  Occurrences of the same transaction set type are merged into one list, in
-  first-appearance order — a starting point for writing an implementation
-  convention / companion guide.
+  with [x12-tidy](https://github.com/tidyedi/x12-tidy), and get an editable
+  convention table: the unique segments it contains (envelope folded in),
+  element/populated counts, and a Segment name/Requirement/Notes you fill in
+  — grouped by transaction set type, occurrences merged into one list.
+- **Code inventory** (`/codes`) — same cleanse, but lists every distinct
+  value seen in each coded (ID-type) element (N101, REF01, and similar),
+  alongside that element's definition from `element_definitions.py`.
+- **Convention importer** (`/convention`) — upload a DLA/DLMS-style
+  implementation convention PDF and get its segment table plus every
+  element's definition and code meanings, parsed straight out of the
+  document (see `convention_pdf.py`). Requires poppler's `pdftotext` — see
+  below.
+- **Reference data** (`/reference`) — browse what `segment_names.py` and
+  `element_definitions.py` actually cover.
 
 ## Run it locally
 
@@ -22,6 +31,21 @@ uv run x12-tools serve     # http://127.0.0.1:8000
 
 Options: `x12-tools serve --host 0.0.0.0 --port 8080 --reload`. The server
 honours `$PORT` when set.
+
+### System dependency: poppler
+
+The Convention importer shells out to poppler's `pdftotext` (no pure-Python
+library matched its `-layout` column-preserving text extraction closely
+enough to parse reliably). Install it separately from the Python
+dependencies:
+
+```bash
+brew install poppler          # macOS
+apt-get install poppler-utils # Debian/Ubuntu
+```
+
+Every other tool works without it; `/api/convention` returns a clear 503 if
+`pdftotext` isn't on `$PATH`.
 
 ## Develop
 

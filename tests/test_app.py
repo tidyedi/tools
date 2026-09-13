@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from x12_tools.app import app
@@ -113,3 +114,51 @@ def test_segments_and_codes_pages_link_to_reference() -> None:
         response = client.get(path)
         assert response.status_code == 200
         assert 'href="/reference"' in response.text
+
+
+def test_convention_page_loads() -> None:
+    response = client.get("/convention")
+    assert response.status_code == 200
+    assert "Convention importer" in response.text
+
+
+def test_api_convention_rejects_non_pdf_filename() -> None:
+    response = client.post("/api/convention", files={"file": ("notes.txt", b"hello", "text/plain")})
+    assert response.status_code == 422
+
+
+def test_api_convention_rejects_empty_file() -> None:
+    response = client.post("/api/convention", files={"file": ("empty.pdf", b"", "application/pdf")})
+    assert response.status_code == 422
+
+
+def test_api_convention_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    from x12_tools import app as app_module
+    from x12_tools.convention_pdf import ConventionSegmentRow, ParsedConvention
+
+    canned = ParsedConvention(
+        segment_table=[
+            ConventionSegmentRow("10", None, "ST", "Transaction Set Header", "M", "1", "", "", "Must use", False)
+        ],
+        segment_details={},
+    )
+    monkeypatch.setattr(app_module, "parse_convention_pdf", lambda data: canned)
+
+    response = client.post("/api/convention", files={"file": ("ic.pdf", b"%PDF-fake", "application/pdf")})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["segment_table"][0]["segment_id"] == "ST"
+
+
+def test_api_convention_reports_missing_pdftotext(monkeypatch: pytest.MonkeyPatch) -> None:
+    from x12_tools import app as app_module
+    from x12_tools.convention_pdf import PdftotextMissing
+
+    def raise_missing(data: bytes) -> None:
+        raise PdftotextMissing("pdftotext (poppler) is not installed on this server")
+
+    monkeypatch.setattr(app_module, "parse_convention_pdf", raise_missing)
+
+    response = client.post("/api/convention", files={"file": ("ic.pdf", b"%PDF-fake", "application/pdf")})
+    assert response.status_code == 503
+    assert "poppler" in response.json()["detail"]

@@ -104,6 +104,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .convention-table-wrap { overflow-x: auto; }
 
+.panel details { border-top: 1px solid var(--border); padding-block: 10px; }
+.panel details:first-of-type { border-top: none; }
+.panel details summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
+.panel details[open] summary { margin-bottom: 8px; }
+
 .copy-buttons { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
 
 .site-footer { padding-block: 24px 40px; color: var(--text-dim); font-size: 0.85rem; border-top: 1px solid var(--border); margin-top: 24px; }

@@ -10,6 +10,8 @@ Routes:
 * ``GET  /codes``         -- the code-inventory tool page.
 * ``POST /api/codes``     -- cleanse pasted EDI and return its coded-element inventory as JSON.
 * ``GET  /reference``     -- what's in segment_names.py and element_definitions.py, browsable.
+* ``GET  /convention``    -- the convention-PDF importer tool page.
+* ``POST /api/convention``-- parse an uploaded DLA/DLMS convention PDF into a segment table and per-segment element/code detail.
 * ``GET  /healthz``       -- liveness probe.
 
 Nothing submitted is stored, logged, or persisted -- each request is cleansed
@@ -22,7 +24,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -30,10 +32,11 @@ from fastapi.templating import Jinja2Templates
 
 from x12_tools import __version__
 from x12_tools.codes import build_code_inventory
+from x12_tools.convention_pdf import PdftotextMissing, parse_convention_pdf
 from x12_tools.element_definitions import SEGMENT_ELEMENTS
 from x12_tools.engine import cleanse
 from x12_tools.inventory import build_inventory
-from x12_tools.models import MAX_EDI_CHARS, SegmentsRequest
+from x12_tools.models import MAX_EDI_CHARS, MAX_PDF_BYTES, SegmentsRequest
 from x12_tools.samples import SAMPLES
 from x12_tools.segment_names import SEGMENT_NAMES
 
@@ -59,6 +62,16 @@ TOOLS: list[dict[str, str]] = [
             "Paste an EDI interchange, cleanse it, and get every distinct value "
             "seen in each coded element (N101, REF01, and similar) -- a starting "
             "point for spotting codes your convention doesn't cover yet."
+        ),
+    },
+    {
+        "slug": "convention",
+        "title": "Convention importer",
+        "blurb": (
+            "Upload a DLA/DLMS-style implementation convention PDF and get its "
+            "segment table plus every element's definition and code meanings, "
+            "extracted straight from the document -- a starting point for "
+            "building a convention table without retyping it by hand."
         ),
     },
 ]
@@ -151,6 +164,14 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.get("/convention", response_class=HTMLResponse)
+    def convention_page(request: Request) -> HTMLResponse:
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "convention.html",
+            {"app_version": __version__, "max_pdf_bytes": MAX_PDF_BYTES, "current": "convention"},
+        )
+
     @app.get("/healthz")
     def healthz() -> dict[str, Any]:
         return {"status": "ok", "x12_tools": __version__}
@@ -194,6 +215,25 @@ def create_app() -> FastAPI:
                 }
             )
         return JSONResponse({"interchange_count": len(interchanges), "interchanges": interchanges})
+
+    @app.post("/api/convention")
+    async def api_convention(file: UploadFile = File(...)) -> JSONResponse:  # noqa: B008 (FastAPI idiom)
+        if not (file.filename or "").lower().endswith(".pdf"):
+            return JSONResponse({"detail": "Please upload a PDF file."}, status_code=422)
+        data = await file.read()
+        if not data:
+            return JSONResponse({"detail": "The uploaded file is empty."}, status_code=422)
+        if len(data) > MAX_PDF_BYTES:
+            return JSONResponse(
+                {"detail": f"File exceeds the {MAX_PDF_BYTES:,}-byte limit."}, status_code=422
+            )
+        try:
+            result = parse_convention_pdf(data)
+        except PdftotextMissing as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=503)
+        except ValueError as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=422)
+        return JSONResponse(result.as_dict())
 
     return app
 

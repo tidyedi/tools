@@ -12,6 +12,11 @@ from pydantic import BaseModel, Field, field_validator
 #: abuse, matching x12-tidy-web's own limit.
 MAX_EDI_CHARS = 2_000_000
 
+#: Reject a convention PDF upload larger than this (bytes). A DLA IC PDF is
+#: rarely over a few MB even with dozens of segment detail pages; generous
+#: headroom, bounds abuse rather than typical use.
+MAX_PDF_BYTES = 25_000_000
+
 
 class SegmentsRequest(BaseModel):
     edi: str = Field(..., description="The X12 EDI text to cleanse and inventory.")

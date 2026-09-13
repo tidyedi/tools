@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Convention importer — X12 Tools</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<nav class="navbar" aria-label="Site"><div class="wrap">{% include "_nav.html" %}</div></nav>
+<header class="site-header">
+  <div class="wrap">
+    <h1>Convention importer</h1>
+    <p class="tagline">
+      Upload a DLA/DLMS-style implementation convention PDF. It's parsed --
+      not stored -- into its segment table (Pos/Id/Name/Req/Max Use/Repeat/
+      Notes/Usage) and, per segment, every element's definition and code
+      meanings, straight from the document that defines them.
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="privacy">
+    <strong>Nothing you upload is stored, logged, or sent anywhere.</strong>
+    The PDF is parsed in memory and forgotten once the response is returned.
+  </p>
+  <p class="hint">
+    Best-effort text-layout parsing of a real document, not a guaranteed-correct
+    one: this was built and tested against DLA's own IC PDFs (which share one
+    consistent generator format). A convention from a different publisher or
+    generator may parse only partially, or not at all -- rows that don't match
+    an expected shape are skipped rather than guessed at.
+  </p>
+
+  <form id="convention-form">
+    <label for="pdf-file" class="field-label">Convention PDF</label>
+    <div class="controls">
+      <label class="inline file-pick">
+        <input type="file" id="pdf-file" accept="application/pdf,.pdf" required>
+        <span>Choose a PDF…</span>
+      </label>
+      <button type="submit" id="submit-btn" class="primary">Parse convention</button>
+      <button type="button" id="clear-btn" class="ghost">Clear</button>
+    </div>
+    <p class="hint">Up to {{ "{:,}".format(max_pdf_bytes) }} bytes.</p>
+    <p id="form-error" class="form-error" hidden></p>
+  </form>
+
+  <section id="results" hidden aria-live="polite"></section>
+</main>
+
+<footer class="wrap site-footer">
+  {% include "_nav.html" %}
+  <p>x12-tools {{ app_version }} · nothing you upload is stored or logged</p>
+</footer>
+
+<script src="/static/convention.js"></script>
+</body>
+</html>
