@@ -6,13 +6,15 @@ convention / companion guide.
 
 An interchange can carry several transaction sets, and a batch can repeat the
 same type many times (e.g. a hundred ``837`` claims in one functional group).
-A companion guide is written per transaction set *type* (ST01, e.g. ``837``),
-not per occurrence, so occurrences of the same type are merged: the result is
-the set of distinct segment IDs seen anywhere inside any ``ST``..``SE`` loop of
-that type, in first-appearance order. Segments outside every ``ST``..``SE``
-loop (``ISA``, ``GS``, ``GE``, ``IEA``, and anything else at the envelope
-level) are reported separately, since they aren't part of any transaction
-set's own convention.
+A companion guide is written per transaction set *type* (ST01, e.g. ``837``)
+at a given release (GS08, e.g. ``004010``), not per occurrence, so occurrences
+of the same type are merged: the result is the set of distinct segment IDs
+seen anywhere inside any ``ST``..``SE`` loop of that type, in first-appearance
+order, plus every release the type was seen at -- together, exactly what's
+needed to go look up the matching convention document. Segments outside every
+``ST``..``SE`` loop (``ISA``, ``GS``, ``GE``, ``IEA``, and anything else at the
+envelope level) are reported separately, since they aren't part of any
+transaction set's own convention.
 
 Built on x12-tidy's own mechanical segment/element split
 (:mod:`x12_tidy.envelope.structure`) -- nothing here validates or judges the
@@ -36,12 +38,18 @@ class TransactionSetSegments:
     transaction_set_id: str  # ST01, e.g. "837"
     occurrences: int  # how many ST..SE loops of this type were found
     segments: list[str]
+    #: GS08 (version/release/industry ID) of every functional group this
+    #: transaction set type was seen in, in first-seen order. Usually one
+    #: value; more than one means the same transaction set type showed up
+    #: under different releases in this submission.
+    releases: list[str]
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "transaction_set_id": self.transaction_set_id,
             "occurrences": self.occurrences,
             "segments": self.segments,
+            "releases": self.releases,
         }
 
 
@@ -64,11 +72,18 @@ class _Group:
     occurrences: int = 0
     segments: list[str] = field(default_factory=list)
     seen: set[str] = field(default_factory=set)
+    releases: list[str] = field(default_factory=list)
+    seen_releases: set[str] = field(default_factory=set)
 
     def add(self, segment_id: str) -> None:
         if segment_id not in self.seen:
             self.seen.add(segment_id)
             self.segments.append(segment_id)
+
+    def add_release(self, release: str) -> None:
+        if release and release not in self.seen_releases:
+            self.seen_releases.add(release)
+            self.releases.append(release)
 
 
 def build_inventory(payload: bytes) -> SegmentInventory:
@@ -93,10 +108,18 @@ def build_inventory(payload: bytes) -> SegmentInventory:
     groups: dict[str, _Group] = {}
     group_order: list[str] = []
     current_ts_id: str | None = None
+    current_release = ""  # GS08 of the functional group currently open
 
     for segment in segments:
         elements = split_elements(segment, element_separator)
         segment_id = elements[0].decode("ascii", errors="replace")
+
+        if segment_id == "GS":
+            current_release = (
+                elements[8].decode("ascii", errors="replace").strip() if len(elements) > 8 else ""
+            )
+            envelope.add(segment_id)
+            continue
 
         if segment_id == "ST":
             current_ts_id = (
@@ -107,6 +130,7 @@ def build_inventory(payload: bytes) -> SegmentInventory:
                 group_order.append(current_ts_id)
             group.occurrences += 1
             group.add(segment_id)
+            group.add_release(current_release)
             continue
 
         if current_ts_id is not None:
@@ -117,7 +141,9 @@ def build_inventory(payload: bytes) -> SegmentInventory:
             envelope.add(segment_id)
 
     transaction_sets = [
-        TransactionSetSegments(ts_id, groups[ts_id].occurrences, groups[ts_id].segments)
+        TransactionSetSegments(
+            ts_id, groups[ts_id].occurrences, groups[ts_id].segments, groups[ts_id].releases
+        )
         for ts_id in group_order
     ]
     return SegmentInventory(envelope.segments, transaction_sets)

@@ -123,10 +123,11 @@
     for (const ts of inv.transaction_sets) {
       const group = el("div", { class: "ts-group" });
       const occ = ts.occurrences === 1 ? "1 occurrence" : `${ts.occurrences} occurrences`;
+      const release = ts.releases.length ? ` · release ${ts.releases.join(", ")}` : "";
       group.appendChild(
         el("h3", {}, [
           document.createTextNode(ts.transaction_set_id + " "),
-          el("span", { class: "occurrences", text: `(${occ})` }),
+          el("span", { class: "occurrences", text: `(${occ}${release})` }),
         ])
       );
       group.appendChild(segmentChips(ts.segments));
