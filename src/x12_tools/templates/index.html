@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>X12 Tools</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<nav class="navbar" aria-label="Site"><div class="wrap">{% include "_nav.html" %}</div></nav>
+<header class="site-header">
+  <div class="wrap">
+    <h1>X12 Tools</h1>
+    <p class="tagline">
+      Small, standalone online tools for working with ANSI X12 EDI. Nothing
+      you paste is stored, logged, or sent anywhere.
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="tool-grid">
+    {% for tool in tools %}
+    <a class="tool-card" href="/{{ tool.slug }}">
+      <h2>{{ tool.title }}</h2>
+      <p>{{ tool.blurb }}</p>
+    </a>
+    {% endfor %}
+  </div>
+</main>
+
+<footer class="wrap site-footer">
+  {% include "_nav.html" %}
+  <p>x12-tools {{ app_version }} · nothing you paste is stored or logged</p>
+</footer>
+</body>
+</html>

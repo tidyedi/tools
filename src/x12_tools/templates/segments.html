@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Segment inventory — X12 Tools</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<nav class="navbar" aria-label="Site"><div class="wrap">{% include "_nav.html" %}</div></nav>
+<header class="site-header">
+  <div class="wrap">
+    <h1>Segment inventory</h1>
+    <p class="tagline">
+      Paste an EDI interchange. It's cleansed with
+      <a href="https://github.com/tidyedi/x12-tidy">x12-tidy</a> first, then
+      split into its unique segments, grouped by transaction set type -- a
+      starting point for writing an implementation convention.
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="privacy">
+    <strong>Nothing you paste is stored, logged, or sent anywhere.</strong>
+    The cleanse and inventory run in memory and are gone once the response
+    is returned.
+  </p>
+
+  <form id="edi-form">
+    <label for="edi" class="field-label">EDI interchange</label>
+    <textarea id="edi" name="edi" spellcheck="false" autocomplete="off"
+      placeholder="Paste an X12 EDI interchange here…&#10;&#10;e.g. ISA*00*          *00*          *ZZ*SENDER…~GS*…~ST*…~SE*…~GE*…~IEA*…~"></textarea>
+    <p class="hint">Up to {{ "{:,}".format(max_edi_chars) }} characters.</p>
+
+    <div class="controls">
+      <label class="inline file-pick">
+        <input type="file" id="file" accept=".edi,.txt,.x12,text/plain">
+        <span>Load a file…</span>
+      </label>
+      <button type="submit" id="submit-btn" class="primary">Cleanse &amp; list segments</button>
+      <button type="button" id="clear-btn" class="ghost">Clear</button>
+    </div>
+    <p id="form-error" class="form-error" hidden></p>
+  </form>
+
+  <section id="results" hidden aria-live="polite"></section>
+</main>
+
+<footer class="wrap site-footer">
+  {% include "_nav.html" %}
+  <p>x12-tools {{ app_version }} · nothing you paste is stored or logged</p>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

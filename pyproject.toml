@@ -1,14 +1,61 @@
 [project]
 name = "x12-tools"
 version = "0.1.0"
-description = "Add your description here"
+description = "A small hub of standalone online tools for working with ANSI X12 EDI"
 readme = "README.md"
+license = "Apache-2.0"
 authors = [
     { name = "Michael Schertz", email = "michael.schertz@gmail.com" }
 ]
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.11"
+dependencies = [
+    # The one external EDI dependency. Pulled from the x12-tidy repo over the
+    # network and imported like any other third-party package -- never
+    # vendored, never a path link to a local checkout. Any fix to the EDI
+    # parsing itself belongs in x12-tidy, not here.
+    "x12-tidy @ git+https://github.com/tidyedi/x12-tidy.git@main",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.6", "mypy>=1.11"]
+
+[project.scripts]
+x12-tools = "x12_tools.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+# x12-tidy is pinned to a commit of its git `main`, not a PyPI release --
+# needed for `main`-only work not yet on PyPI.
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+# Ships the whole package directory, templates/ and static/ included.
+packages = ["src/x12_tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    # Starlette's TestClient nudges toward a not-yet-released httpx2; harmless.
+    "ignore:Using `httpx` with `starlette.testclient`:starlette.exceptions.StarletteDeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+# x12-tidy is fully type-hinted but ships no py.typed marker yet.
+module = ["x12_tidy.*"]
+ignore_missing_imports = true
