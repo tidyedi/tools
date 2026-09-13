@@ -7,6 +7,8 @@ Routes:
 * ``GET  /``              -- the tools hub (landing page, one card per tool).
 * ``GET  /segments``      -- the segment-inventory tool page.
 * ``POST /api/segments``  -- cleanse pasted EDI and return its segment inventory as JSON.
+* ``GET  /codes``         -- the code-inventory tool page.
+* ``POST /api/codes``     -- cleanse pasted EDI and return its coded-element inventory as JSON.
 * ``GET  /healthz``       -- liveness probe.
 
 Nothing submitted is stored, logged, or persisted -- each request is cleansed
@@ -26,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from x12_tools import __version__
+from x12_tools.codes import build_code_inventory
 from x12_tools.engine import cleanse
 from x12_tools.inventory import build_inventory
 from x12_tools.models import MAX_EDI_CHARS, SegmentsRequest
@@ -45,6 +48,15 @@ TOOLS: list[dict[str, str]] = [
             "Paste an EDI interchange, cleanse it, and get the unique segments it "
             "contains, grouped by transaction set type -- a starting point for "
             "writing an implementation convention."
+        ),
+    },
+    {
+        "slug": "codes",
+        "title": "Code inventory",
+        "blurb": (
+            "Paste an EDI interchange, cleanse it, and get every distinct value "
+            "seen in each coded element (N101, REF01, and similar) -- a starting "
+            "point for spotting codes your convention doesn't cover yet."
         ),
     },
 ]
@@ -90,6 +102,22 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.get("/codes", response_class=HTMLResponse)
+    def codes_page(request: Request) -> HTMLResponse:
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "codes.html",
+            {
+                "app_version": __version__,
+                "max_edi_chars": MAX_EDI_CHARS,
+                "samples": [
+                    {"slug": s.slug, "title": s.title, "blurb": s.blurb, "edi": s.edi}
+                    for s in SAMPLES
+                ],
+                "current": "codes",
+            },
+        )
+
     @app.get("/healthz")
     def healthz() -> dict[str, Any]:
         return {"status": "ok", "x12_tools": __version__}
@@ -104,6 +132,25 @@ def create_app() -> FastAPI:
             # something that isn't a valid interchange.
             inventory = (
                 build_inventory(result.payload)
+                if result.payload is not None and not result.has_fatal
+                else None
+            )
+            interchanges.append(
+                {
+                    **result.as_dict(),
+                    "inventory": inventory.as_dict() if inventory is not None else None,
+                }
+            )
+        return JSONResponse({"interchange_count": len(interchanges), "interchanges": interchanges})
+
+    @app.post("/api/codes")
+    def api_codes(req: SegmentsRequest) -> JSONResponse:
+        interchanges = []
+        for result in cleanse(req.edi):
+            # Same rule as /api/segments: a fatal finding means this isn't a
+            # valid interchange, so there's no code inventory to report either.
+            inventory = (
+                build_code_inventory(result.payload)
                 if result.payload is not None and not result.has_fatal
                 else None
             )

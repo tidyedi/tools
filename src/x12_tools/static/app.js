@@ -98,12 +98,18 @@
   // "004010.850.NORTHWIND-CONTOSO.2024-04-02". More than one release for the
   // same type in this submission joins with "+" (e.g. "004010+005010"). No
   // counts of anything -- just enough to say which convention this list is for.
-  function tsListId(ts, facts) {
+  //
+  // ``suffix`` is the implementation-convention suffix (e.g. the "A" in
+  // "315A") -- assigned by whoever publishes the convention, not carried
+  // anywhere in the EDI itself, so it's a manual field appended to the EDI
+  // number here rather than something read off the interchange.
+  function tsListId(ts, facts, suffix) {
     const release = ts.releases.length ? ts.releases.join("+") : "UNKNOWN";
     const sender = (facts && facts.sender_id) || "UNKNOWN";
     const receiver = (facts && facts.receiver_id) || "UNKNOWN";
     const date = (facts && facts.interchange_date) || "UNKNOWN";
-    return `${release}.${ts.transaction_set_id}.${sender}-${receiver}.${date}`;
+    const edi = ts.transaction_set_id + (suffix || "");
+    return `${release}.${edi}.${sender}-${receiver}.${date}`;
   }
 
   const REQUIREMENT_OPTIONS = [

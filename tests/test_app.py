@@ -62,3 +62,40 @@ def test_segments_page_lists_every_sample() -> None:
     for sample in SAMPLES:
         assert sample.title in response.text
         assert sample.slug in response.text
+
+
+def test_index_lists_the_codes_tool() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "Code inventory" in response.text
+
+
+def test_api_codes_happy_path(two_orders_edi: str) -> None:
+    response = client.post("/api/codes", json={"edi": two_orders_edi})
+    assert response.status_code == 200
+    data = response.json()
+    codes = data["interchanges"][0]["inventory"]["transaction_sets"][0]["codes"]
+    gs01 = next(c for c in codes if c["segment_id"] == "GS" and c["position"] == 1)
+    assert gs01["values"] == ["PO"]
+    assert gs01["name"] == "Functional Identifier Code"
+
+
+def test_api_codes_withholds_inventory_on_fatal_finding() -> None:
+    edi = (
+        "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *"
+        "240101*1200*U*00401*000000001*0*P*:~"
+        "GS*PO*SENDERGS*RECEIVERID*20240101*1200*1*X*004010~"
+        "ST*850*0001~BEG*00*NE*PO0001**20240101~SE*3*0001~"
+        "GE*1*1~IEA*2*000000001~"  # IEA01 overstates the group count -- fatal
+    )
+    response = client.post("/api/codes", json={"edi": edi})
+    assert response.status_code == 200
+    interchange = response.json()["interchanges"][0]
+    assert interchange["has_fatal"] is True
+    assert interchange["inventory"] is None
+
+
+def test_codes_page_loads() -> None:
+    response = client.get("/codes")
+    assert response.status_code == 200
+    assert "Code inventory" in response.text
