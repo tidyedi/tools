@@ -90,36 +90,6 @@
     return node;
   }
 
-  function severityCountsRow(counts) {
-    const parts = ["fatal", "error", "warning"]
-      .filter((sev) => counts[sev] > 0)
-      .map((sev) => el("span", { class: `sev-${sev}`, text: `${counts[sev]} ${sev}` }));
-    if (!parts.length) {
-      return el("p", { class: "hint", text: "No findings — this interchange was already clean." });
-    }
-    return el("div", { class: "severity-counts" }, parts);
-  }
-
-  function diagnosticsList(diagnostics) {
-    if (!diagnostics.length) return null;
-    const items = diagnostics.map((d) => {
-      const loc = d.offset !== null ? ` (byte ${d.offset})` : "";
-      return el("li", {}, [
-        el("span", { class: `diag-code sev-${d.severity}`, text: d.code }),
-        el("span", { text: ` — ${d.message}${loc}` }),
-      ]);
-    });
-    return el("ul", { class: "diag-list" }, items);
-  }
-
-  function segmentChips(segments) {
-    return el(
-      "div",
-      { class: "segment-chips" },
-      segments.map((s) => el("span", { class: "segment-chip", text: s }))
-    );
-  }
-
   // A stable, compact key for one transaction set type's segment list:
   // release.edi.sender-receiver.date -- e.g.
   // "004010.850.NORTHWIND-CONTOSO.2024-04-02". More than one release for the
@@ -133,15 +103,7 @@
     return `${release}.${ts.transaction_set_id}.${sender}-${receiver}.${date}`;
   }
 
-  // One identified list on screen: the id line, then its segments as chips.
-  function listBlock(id, segments) {
-    const block = el("div", { class: "ts-group" });
-    block.appendChild(el("h3", { class: "ts-id", text: id }));
-    block.appendChild(segmentChips(segments));
-    return block;
-  }
-
-  // The same lists shown on screen, as plain text meant to be pasted into a
+  // The lists shown on screen, as plain text meant to be pasted into a
   // convention draft: one identifier line per transaction set type, then its
   // segments (envelope included) -- nothing else, no counts.
   function plainTextList(entry) {
@@ -177,42 +139,26 @@
     return wrap;
   }
 
-  function renderInterchange(entry) {
+  function renderInterchange(entry, showHeading) {
     const panel = el("div", { class: "panel" });
-    panel.appendChild(el("h2", { text: `Interchange ${entry.index}` }));
+    if (showHeading) panel.appendChild(el("h2", { text: `Interchange ${entry.index}` }));
 
     if (!entry.recovered) {
       panel.appendChild(
         el("p", { class: "form-error", text: "No ISA header could be located — nothing to inventory." })
       );
-      const diags = diagnosticsList(entry.diagnostics);
-      if (diags) panel.appendChild(diags);
       return panel;
     }
 
-    panel.appendChild(severityCountsRow(entry.severity_counts));
-    const diags = diagnosticsList(entry.diagnostics);
-    if (diags) panel.appendChild(diags);
-
-    for (const ts of entry.inventory.transaction_sets) {
-      panel.appendChild(listBlock(tsListId(ts, entry.facts), ts.segments));
-    }
-
     panel.appendChild(copyBlock(plainTextList(entry)));
-
-    const details = el("details", { class: "cleansed-wrap" });
-    details.appendChild(el("summary", { text: "Cleansed interchange" }));
-    const pre = el("pre", { text: entry.cleansed_text || "" });
-    details.appendChild(pre);
-    panel.appendChild(details);
-
     return panel;
   }
 
   function renderResults(data) {
     results.innerHTML = "";
+    const showHeading = data.interchanges.length > 1; // only disambiguate when there's more than one
     for (const entry of data.interchanges) {
-      results.appendChild(renderInterchange(entry));
+      results.appendChild(renderInterchange(entry, showHeading));
     }
     results.hidden = false;
   }

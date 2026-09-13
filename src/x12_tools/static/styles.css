@@ -10,8 +10,6 @@
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --fatal: #b3261e;
-  --error: #b3691e;
-  --warning: #8a7300;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,8 +22,6 @@
     --accent: #4fb99f;
     --accent-text: #0b1210;
     --fatal: #ff8a80;
-    --error: #ffb74d;
-    --warning: #ffe082;
   }
 }
 
@@ -89,25 +85,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .panel { border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; background: var(--panel); margin-block: 16px; }
 .panel h2 { margin-top: 0; font-size: 1.05rem; }
-
-.severity-counts { display: flex; gap: 12px; font-size: 0.85rem; margin-block: 8px; }
-.sev-fatal { color: var(--fatal); }
-.sev-error { color: var(--error); }
-.sev-warning { color: var(--warning); }
-
-.diag-list { list-style: none; padding: 0; margin: 0; font-size: 0.85rem; }
-.diag-list li { padding: 6px 0; border-top: 1px solid var(--border); }
-.diag-list li:first-child { border-top: none; }
-.diag-code { font-family: var(--mono); font-weight: 600; }
-
-.segment-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 8px; }
-.segment-chip { font-family: var(--mono); font-size: 0.85rem; padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); }
-
-.ts-group { margin-block: 14px; }
-.ts-id { margin: 0 0 4px; font-size: 0.95rem; font-family: var(--mono); }
-
-.cleansed-wrap summary { cursor: pointer; color: var(--text-dim); font-size: 0.9rem; }
-.cleansed-wrap pre { white-space: pre-wrap; word-break: break-all; font-family: var(--mono); font-size: 0.8rem; background: var(--bg); padding: 12px; border-radius: 8px; }
 
 .copy-wrap pre { white-space: pre-wrap; font-family: var(--mono); font-size: 0.85rem; background: var(--bg); padding: 12px; border-radius: 8px; margin-top: 8px; }
 
