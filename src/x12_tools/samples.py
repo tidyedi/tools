@@ -89,12 +89,12 @@ SAMPLES: tuple[Sample, ...] = (
     ),
     Sample(
         slug="needs-cleanse",
-        title="Forwarded email — needs cleansing first",
+        title="Forwarded email — cannot be fully repaired",
         blurb=(
             "An email header sits before the ISA and four ISA elements were "
-            "trimmed below their fixed width; x12-tidy repairs the envelope but "
-            "one functional-group-count finding remains — the inventory still "
-            "runs on the repaired payload."
+            "trimmed below their fixed width; x12-tidy repairs those but IEA01 "
+            "still overstates the functional-group count -- a fatal finding "
+            "x12-tidy won't guess a fix for, so the segment list is withheld."
         ),
         edi=(
             "Subject: FW: Q1 reorder - please confirm\r\n"

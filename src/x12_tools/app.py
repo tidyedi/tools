@@ -96,7 +96,15 @@ def create_app() -> FastAPI:
     def api_segments(req: SegmentsRequest) -> JSONResponse:
         interchanges = []
         for result in cleanse(req.edi):
-            inventory = build_inventory(result.payload) if result.payload is not None else None
+            # A fatal finding means a conforming parser would still reject
+            # this interchange even though x12-tidy could locate an ISA line
+            # -- withhold the segment listing rather than list segments from
+            # something that isn't a valid interchange.
+            inventory = (
+                build_inventory(result.payload)
+                if result.payload is not None and not result.has_fatal
+                else None
+            )
             interchanges.append(
                 {
                     **result.as_dict(),

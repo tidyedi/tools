@@ -103,17 +103,18 @@
     return `${release}.${ts.transaction_set_id}.${sender}-${receiver}.${date}`;
   }
 
-  // The lists shown on screen, as plain text meant to be pasted into a
-  // convention draft: one identifier line per transaction set type, then its
-  // segments (envelope included) -- nothing else, no counts.
+  // The lists shown on screen, as a pipe-delimited table meant to be pasted
+  // into a convention draft: one row per segment -- identifier | segment |
+  // element count -- across every transaction set type in this interchange.
   function plainTextList(entry) {
     const facts = entry.facts;
     const lines = [];
 
     for (const ts of entry.inventory.transaction_sets) {
-      if (lines.length) lines.push("");
-      lines.push(tsListId(ts, facts));
-      lines.push(ts.segments.join(", "));
+      const id = tsListId(ts, facts);
+      for (const seg of ts.segments) {
+        lines.push(`${id} | ${seg.segment_id} | ${seg.element_count}`);
+      }
     }
 
     return lines.join("\n");
@@ -146,6 +147,24 @@
     if (!entry.recovered) {
       panel.appendChild(
         el("p", { class: "form-error", text: "No ISA header could be located — nothing to inventory." })
+      );
+      return panel;
+    }
+
+    if (entry.has_fatal) {
+      panel.appendChild(
+        el("p", {
+          class: "form-error",
+          text: "Cannot be cleansed — a fatal finding remains, so this isn't a conformant interchange. Segment list withheld.",
+        })
+      );
+      const fatals = entry.diagnostics.filter((d) => d.severity === "fatal");
+      panel.appendChild(
+        el(
+          "ul",
+          { class: "fatal-list" },
+          fatals.map((d) => el("li", { text: `${d.code} — ${d.message}` }))
+        )
       );
       return panel;
     }

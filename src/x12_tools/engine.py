@@ -106,10 +106,21 @@ class CleanResult:
     def severity_counts(self) -> dict[str, int]:
         return severity_counts(self.diagnostics)
 
+    @property
+    def has_fatal(self) -> bool:
+        """True when a fatal finding remains after cleansing -- an ISA line
+        was located (``recovered``), but a conforming parser would still
+        reject the interchange (e.g. a functional-group-count mismatch). The
+        segment inventory isn't meaningful over a payload like that, so
+        callers should withhold it rather than list segments from something
+        that isn't actually a valid interchange."""
+        return self.severity_counts["fatal"] > 0
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "index": self.index,
             "recovered": self.recovered,
+            "has_fatal": self.has_fatal,
             "was_clean": self.was_clean,
             "cleansed_text": self.cleansed_text,
             "severity_counts": self.severity_counts,
