@@ -39,9 +39,17 @@
         <input type="file" id="file" accept=".edi,.txt,.x12,text/plain">
         <span>Load a file…</span>
       </label>
+      <label class="inline">
+        <select id="sample-select">
+          <option value="">Load a sample…</option>
+          {% for s in samples %}<option value="{{ s.slug }}">{{ s.title }}</option>{% endfor %}
+        </select>
+      </label>
       <button type="submit" id="submit-btn" class="primary">Cleanse &amp; list segments</button>
       <button type="button" id="clear-btn" class="ghost">Clear</button>
     </div>
+    <script type="application/json" id="samples-data">{{ samples | tojson }}</script>
+    <p id="sample-note" class="hint" hidden></p>
     <p id="form-error" class="form-error" hidden></p>
   </form>
 

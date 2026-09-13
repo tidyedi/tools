@@ -29,6 +29,7 @@ from x12_tools import __version__
 from x12_tools.engine import cleanse
 from x12_tools.inventory import build_inventory
 from x12_tools.models import MAX_EDI_CHARS, SegmentsRequest
+from x12_tools.samples import SAMPLES
 
 _HERE = Path(__file__).parent
 _TEMPLATES = Jinja2Templates(directory=str(_HERE / "templates"))
@@ -79,6 +80,10 @@ def create_app() -> FastAPI:
             {
                 "app_version": __version__,
                 "max_edi_chars": MAX_EDI_CHARS,
+                "samples": [
+                    {"slug": s.slug, "title": s.title, "blurb": s.blurb, "edi": s.edi}
+                    for s in SAMPLES
+                ],
                 "current": "segments",
             },
         )

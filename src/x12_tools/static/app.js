@@ -6,22 +6,45 @@
 
   const ediField = document.getElementById("edi");
   const fileInput = document.getElementById("file");
+  const sampleSelect = document.getElementById("sample-select");
+  const sampleNote = document.getElementById("sample-note");
   const clearBtn = document.getElementById("clear-btn");
   const submitBtn = document.getElementById("submit-btn");
   const formError = document.getElementById("form-error");
   const results = document.getElementById("results");
+
+  const samplesDataEl = document.getElementById("samples-data");
+  const SAMPLES = samplesDataEl ? JSON.parse(samplesDataEl.textContent) : [];
 
   fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
     file.text().then((text) => {
       ediField.value = text;
+      sampleSelect.value = "";
+      sampleNote.hidden = true;
     });
   });
+
+  if (sampleSelect) {
+    sampleSelect.addEventListener("change", () => {
+      const sample = SAMPLES.find((s) => s.slug === sampleSelect.value);
+      if (!sample) {
+        sampleNote.hidden = true;
+        return;
+      }
+      ediField.value = sample.edi;
+      fileInput.value = "";
+      sampleNote.textContent = sample.blurb;
+      sampleNote.hidden = false;
+    });
+  }
 
   clearBtn.addEventListener("click", () => {
     ediField.value = "";
     fileInput.value = "";
+    if (sampleSelect) sampleSelect.value = "";
+    sampleNote.hidden = true;
     results.hidden = true;
     results.innerHTML = "";
     formError.hidden = true;

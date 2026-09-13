@@ -36,3 +36,13 @@ def test_api_segments_rejects_empty_input() -> None:
     response = client.post("/api/segments", json={"edi": "   "})
     assert response.status_code == 422
     assert "detail" in response.json()
+
+
+def test_segments_page_lists_every_sample() -> None:
+    from x12_tools.samples import SAMPLES
+
+    response = client.get("/segments")
+    assert response.status_code == 200
+    for sample in SAMPLES:
+        assert sample.title in response.text
+        assert sample.slug in response.text
