@@ -33,6 +33,18 @@ def _s(value: bytes) -> str:
     return value.decode(TEXT_CODEC, errors="replace").strip()
 
 
+def _iso_date(raw: str) -> str:
+    """ISA09 is always 6-digit ``YYMMDD`` (the ISA segment's shape doesn't
+    change across releases -- only GS04 grew to 8-digit CCYYMMDD). Rendered as
+    ``YYYY-MM-DD``, assuming 20xx -- the only reasonable reading for EDI
+    traffic today. Anything else that shows up here (already-repaired by
+    x12-tidy, so this should be rare) is returned unchanged rather than
+    guessed at."""
+    if len(raw) == 6 and raw.isdigit():
+        return f"20{raw[0:2]}-{raw[2:4]}-{raw[4:6]}"
+    return raw
+
+
 @dataclass(frozen=True)
 class EnvelopeFactsView:
     """The envelope facts a companion guide needs beyond the segment list
@@ -57,7 +69,7 @@ class EnvelopeFactsView:
             sender_id=_s(facts.sender_id),
             receiver_qualifier=_s(facts.receiver_qualifier),
             receiver_id=_s(facts.receiver_id),
-            interchange_date=_s(facts.interchange_date),
+            interchange_date=_iso_date(_s(facts.interchange_date)),
             interchange_time=_s(facts.interchange_time),
             interchange_version=_s(facts.interchange_version),
             usage_indicator=_s(facts.usage_indicator),

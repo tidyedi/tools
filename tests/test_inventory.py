@@ -7,14 +7,18 @@ from x12_tools.engine import cleanse
 from x12_tools.inventory import build_inventory
 
 
-def test_envelope_segments_include_isa(two_orders_edi: str) -> None:
+def test_envelope_segments_are_folded_into_each_transaction_sets_list(two_orders_edi: str) -> None:
     result = cleanse(two_orders_edi)[0]
     assert result.payload is not None
     inventory = build_inventory(result.payload)
-    # x12-tidy's split_segments starts at GS (it treats the ISA line as a
-    # separate, upstream concern) -- but ISA is still part of the envelope
-    # for inventory purposes, so build_inventory adds it back explicitly.
-    assert inventory.envelope_segments == ["ISA", "GS", "GE", "IEA"]
+
+    assert len(inventory.transaction_sets) == 1
+    ts = inventory.transaction_sets[0]
+    # ISA/GS lead, GE/IEA trail -- x12-tidy's split_segments starts at GS (the
+    # ISA line is a separate, upstream concern), so ISA is added back
+    # explicitly; the rest come from walking segments outside any ST..SE loop.
+    assert ts.segments[:2] == ["ISA", "GS"]
+    assert ts.segments[-2:] == ["GE", "IEA"]
 
 
 def test_two_occurrences_of_same_transaction_set_are_merged(two_orders_edi: str) -> None:
@@ -25,14 +29,14 @@ def test_two_occurrences_of_same_transaction_set_are_merged(two_orders_edi: str)
     assert len(inventory.transaction_sets) == 1
     ts = inventory.transaction_sets[0]
     assert ts.transaction_set_id == "850"
-    assert ts.occurrences == 2
     # First occurrence contributes ST, BEG, N1, SE; the second adds PO1 (not
-    # already seen) but repeats ST/BEG/SE without duplicating them.
-    assert ts.segments == ["ST", "BEG", "N1", "SE", "PO1"]
+    # already seen) but repeats ST/BEG/SE without duplicating them. Envelope
+    # segments (ISA/GS header, GE/IEA trailer) are folded around them.
+    assert ts.segments == ["ISA", "GS", "ST", "BEG", "N1", "SE", "PO1", "GE", "IEA"]
     assert ts.releases == ["004010"]
 
 
-def test_distinct_transaction_set_types_get_separate_groups() -> None:
+def test_distinct_transaction_set_types_get_separate_lists() -> None:
     edi = (
         "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *"
         "240101*1200*U*00401*000000002*0*P*:~"
@@ -47,8 +51,8 @@ def test_distinct_transaction_set_types_get_separate_groups() -> None:
 
     ids = [ts.transaction_set_id for ts in inventory.transaction_sets]
     assert ids == ["850", "855"]
-    assert inventory.transaction_sets[0].segments == ["ST", "BEG", "SE"]
-    assert inventory.transaction_sets[1].segments == ["ST", "BAK", "SE"]
+    assert inventory.transaction_sets[0].segments == ["ISA", "GS", "ST", "BEG", "SE", "GE", "IEA"]
+    assert inventory.transaction_sets[1].segments == ["ISA", "GS", "ST", "BAK", "SE", "GE", "IEA"]
     assert inventory.transaction_sets[0].releases == ["004010"]
     assert inventory.transaction_sets[1].releases == ["004010"]
 
@@ -71,5 +75,5 @@ def test_same_transaction_set_type_across_two_releases_lists_both() -> None:
 
     assert len(inventory.transaction_sets) == 1
     ts = inventory.transaction_sets[0]
-    assert ts.occurrences == 2
     assert ts.releases == ["004010", "005010"]
+    assert ts.segments == ["ISA", "GS", "ST", "BEG", "SE", "GE", "IEA"]

@@ -25,6 +25,7 @@ def test_cleanse_exposes_sender_receiver_and_version(two_orders_edi: str) -> Non
     assert result.facts.receiver_id == "RECEIVER"
     assert result.facts.interchange_version == "00401"
     assert result.facts.group_versions == ["004010"]
+    assert result.facts.interchange_date == "2024-01-01"  # ISA09 "240101" -> ISO, assuming 20xx
 
 
 def test_cleanse_unrecoverable_input() -> None:

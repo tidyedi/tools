@@ -120,24 +120,17 @@
     );
   }
 
-  // A stable, compact key for one segment list: release.edi.sender-receiver.date
-  // -- e.g. "004010.850.NORTHWIND-CONTOSO.240402". Everything a companion
-  // guide needs to identify *which* convention this list belongs to, in one
-  // line, with no counts of anything.
-  function listId(release, edi, facts) {
+  // A stable, compact key for one transaction set type's segment list:
+  // release.edi.sender-receiver.date -- e.g.
+  // "004010.850.NORTHWIND-CONTOSO.2024-04-02". More than one release for the
+  // same type in this submission joins with "+" (e.g. "004010+005010"). No
+  // counts of anything -- just enough to say which convention this list is for.
+  function tsListId(ts, facts) {
+    const release = ts.releases.length ? ts.releases.join("+") : "UNKNOWN";
     const sender = (facts && facts.sender_id) || "UNKNOWN";
     const receiver = (facts && facts.receiver_id) || "UNKNOWN";
     const date = (facts && facts.interchange_date) || "UNKNOWN";
-    return `${release}.${edi}.${sender}-${receiver}.${date}`;
-  }
-
-  function tsListId(ts, facts) {
-    return listId(ts.releases.length ? ts.releases.join("+") : "UNKNOWN", ts.transaction_set_id, facts);
-  }
-
-  function envelopeListId(facts) {
-    const release = facts && facts.group_versions.length ? facts.group_versions.join("+") : "UNKNOWN";
-    return listId(release, "ENVELOPE", facts);
+    return `${release}.${ts.transaction_set_id}.${sender}-${receiver}.${date}`;
   }
 
   // One identified list on screen: the id line, then its segments as chips.
@@ -149,19 +142,13 @@
   }
 
   // The same lists shown on screen, as plain text meant to be pasted into a
-  // convention draft: one identifier line, then that list's segments --
-  // nothing else, no counts.
+  // convention draft: one identifier line per transaction set type, then its
+  // segments (envelope included) -- nothing else, no counts.
   function plainTextList(entry) {
-    const inv = entry.inventory;
     const facts = entry.facts;
     const lines = [];
 
-    if (inv.envelope_segments.length) {
-      lines.push(envelopeListId(facts));
-      lines.push(inv.envelope_segments.join(", "));
-    }
-
-    for (const ts of inv.transaction_sets) {
+    for (const ts of entry.inventory.transaction_sets) {
       if (lines.length) lines.push("");
       lines.push(tsListId(ts, facts));
       lines.push(ts.segments.join(", "));
@@ -207,11 +194,7 @@
     const diags = diagnosticsList(entry.diagnostics);
     if (diags) panel.appendChild(diags);
 
-    const inv = entry.inventory;
-    if (inv.envelope_segments.length) {
-      panel.appendChild(listBlock(envelopeListId(entry.facts), inv.envelope_segments));
-    }
-    for (const ts of inv.transaction_sets) {
+    for (const ts of entry.inventory.transaction_sets) {
       panel.appendChild(listBlock(tsListId(ts, entry.facts), ts.segments));
     }
 

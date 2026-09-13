@@ -7,14 +7,13 @@ convention / companion guide.
 An interchange can carry several transaction sets, and a batch can repeat the
 same type many times (e.g. a hundred ``837`` claims in one functional group).
 A companion guide is written per transaction set *type* (ST01, e.g. ``837``)
-at a given release (GS08, e.g. ``004010``), not per occurrence, so occurrences
-of the same type are merged: the result is the set of distinct segment IDs
-seen anywhere inside any ``ST``..``SE`` loop of that type, in first-appearance
-order, plus every release the type was seen at -- together, exactly what's
-needed to go look up the matching convention document. Segments outside every
-``ST``..``SE`` loop (``ISA``, ``GS``, ``GE``, ``IEA``, and anything else at the
-envelope level) are reported separately, since they aren't part of any
-transaction set's own convention.
+at a given release (GS08, e.g. ``004010``), so occurrences of the same type
+are merged into one list. ``ISA``, ``GS``, ``GE`` and ``IEA`` are envelope
+segments, not transaction-set content, but they are still segments that show
+up around every transaction set's own -- so each type's list is the envelope
+segments (``ISA``/``GS`` first, ``GE``/``IEA`` last) plus everything seen
+inside any ``ST``..``SE`` loop of that type, deduplicated, in first-appearance
+order within each part.
 
 Built on x12-tidy's own mechanical segment/element split
 (:mod:`x12_tidy.envelope.structure`) -- nothing here validates or judges the
@@ -29,27 +28,32 @@ from typing import Any
 from x12_tidy.envelope.isa import extract_isa_line, split_isa_line
 from x12_tidy.envelope.structure import drop_null_rows, split_elements, split_segments
 
+#: Envelope segments that open an interchange/functional group, in the order
+#: they appear ahead of any transaction set's own content.
+_ENVELOPE_HEADER = ("ISA", "GS")
+#: Envelope segments that close a functional group/interchange, in the order
+#: they appear after every transaction set's own content.
+_ENVELOPE_TRAILER = ("GE", "IEA")
+
 
 @dataclass(frozen=True)
 class TransactionSetSegments:
     """The unique segments seen across every occurrence of one transaction set
-    type (ST01), in first-appearance order."""
+    type (ST01) -- envelope segments plus this type's own content."""
 
     transaction_set_id: str  # ST01, e.g. "837"
-    occurrences: int  # how many ST..SE loops of this type were found
-    segments: list[str]
     #: GS08 (version/release/industry ID) of every functional group this
     #: transaction set type was seen in, in first-seen order. Usually one
-    #: value; more than one means the same transaction set type showed up
-    #: under different releases in this submission.
+    #: value; more than one means the same type showed up under different
+    #: releases in this submission.
     releases: list[str]
+    segments: list[str]
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "transaction_set_id": self.transaction_set_id,
-            "occurrences": self.occurrences,
-            "segments": self.segments,
             "releases": self.releases,
+            "segments": self.segments,
         }
 
 
@@ -57,14 +61,10 @@ class TransactionSetSegments:
 class SegmentInventory:
     """One interchange's segment inventory."""
 
-    envelope_segments: list[str]
     transaction_sets: list[TransactionSetSegments]
 
     def as_dict(self) -> dict[str, Any]:
-        return {
-            "envelope_segments": self.envelope_segments,
-            "transaction_sets": [ts.as_dict() for ts in self.transaction_sets],
-        }
+        return {"transaction_sets": [ts.as_dict() for ts in self.transaction_sets]}
 
 
 @dataclass
@@ -95,20 +95,16 @@ def build_inventory(payload: bytes) -> SegmentInventory:
     """
     located = extract_isa_line(payload)
     if located.isa_line is None:
-        return SegmentInventory([], [])
+        return SegmentInventory([])
 
     decomposition = split_isa_line(located.isa_line, base_offset=located.isa_start)
     element_separator = decomposition.element_separator
     if not element_separator:
-        return SegmentInventory([], [])
+        return SegmentInventory([])
 
     segments = drop_null_rows(split_segments(payload))
 
-    envelope = _Group()
-    # split_segments starts at GS (the ISA line is handled separately by
-    # x12-tidy, upstream of this walk) -- but ISA is still part of the
-    # envelope for inventory purposes, so it's added explicitly here.
-    envelope.add("ISA")
+    envelope_seen: set[str] = {"ISA"}  # split_segments starts at GS; ISA is added back explicitly
     groups: dict[str, _Group] = {}
     group_order: list[str] = []
     current_ts_id: str | None = None
@@ -122,7 +118,7 @@ def build_inventory(payload: bytes) -> SegmentInventory:
             current_release = (
                 elements[8].decode("ascii", errors="replace").strip() if len(elements) > 8 else ""
             )
-            envelope.add(segment_id)
+            envelope_seen.add(segment_id)
             continue
 
         if segment_id == "ST":
@@ -142,12 +138,13 @@ def build_inventory(payload: bytes) -> SegmentInventory:
             if segment_id == "SE":
                 current_ts_id = None
         else:
-            envelope.add(segment_id)
+            envelope_seen.add(segment_id)
+
+    header = [s for s in _ENVELOPE_HEADER if s in envelope_seen]
+    trailer = [s for s in _ENVELOPE_TRAILER if s in envelope_seen]
 
     transaction_sets = [
-        TransactionSetSegments(
-            ts_id, groups[ts_id].occurrences, groups[ts_id].segments, groups[ts_id].releases
-        )
+        TransactionSetSegments(ts_id, groups[ts_id].releases, header + groups[ts_id].segments + trailer)
         for ts_id in group_order
     ]
-    return SegmentInventory(envelope.segments, transaction_sets)
+    return SegmentInventory(transaction_sets)
