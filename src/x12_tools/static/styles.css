@@ -104,8 +104,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .segment-chip { font-family: var(--mono); font-size: 0.85rem; padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); }
 
 .ts-group { margin-block: 14px; }
-.ts-group h3 { margin: 0 0 4px; font-size: 0.95rem; font-family: var(--mono); }
-.ts-group .occurrences { color: var(--text-dim); font-weight: 400; font-family: var(--sans); }
+.ts-id { margin: 0 0 4px; font-size: 0.95rem; font-family: var(--mono); }
 
 .cleansed-wrap summary { cursor: pointer; color: var(--text-dim); font-size: 0.9rem; }
 .cleansed-wrap pre { white-space: pre-wrap; word-break: break-all; font-family: var(--mono); font-size: 0.8rem; background: var(--bg); padding: 12px; border-radius: 8px; }

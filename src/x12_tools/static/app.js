@@ -120,42 +120,53 @@
     );
   }
 
-  function factsLine(facts) {
-    const from = [facts.sender_qualifier, facts.sender_id].filter(Boolean).join(" ");
-    const to = [facts.receiver_qualifier, facts.receiver_id].filter(Boolean).join(" ");
-    return el("p", {
-      class: "hint",
-      text:
-        `From ${from || "—"} to ${to || "—"} · interchange version ${facts.interchange_version || "—"}` +
-        ` · usage ${facts.usage_indicator || "—"}` +
-        (facts.group_versions.length ? ` · group release ${facts.group_versions.join(", ")}` : ""),
-    });
+  // A stable, compact key for one segment list: release.edi.sender-receiver.date
+  // -- e.g. "004010.850.NORTHWIND-CONTOSO.240402". Everything a companion
+  // guide needs to identify *which* convention this list belongs to, in one
+  // line, with no counts of anything.
+  function listId(release, edi, facts) {
+    const sender = (facts && facts.sender_id) || "UNKNOWN";
+    const receiver = (facts && facts.receiver_id) || "UNKNOWN";
+    const date = (facts && facts.interchange_date) || "UNKNOWN";
+    return `${release}.${edi}.${sender}-${receiver}.${date}`;
   }
 
-  // The same information as the chips above, as plain text meant to be
-  // copied into a companion-guide draft: envelope facts, then one line per
-  // transaction set type with its release and segments.
+  function tsListId(ts, facts) {
+    return listId(ts.releases.length ? ts.releases.join("+") : "UNKNOWN", ts.transaction_set_id, facts);
+  }
+
+  function envelopeListId(facts) {
+    const release = facts && facts.group_versions.length ? facts.group_versions.join("+") : "UNKNOWN";
+    return listId(release, "ENVELOPE", facts);
+  }
+
+  // One identified list on screen: the id line, then its segments as chips.
+  function listBlock(id, segments) {
+    const block = el("div", { class: "ts-group" });
+    block.appendChild(el("h3", { class: "ts-id", text: id }));
+    block.appendChild(segmentChips(segments));
+    return block;
+  }
+
+  // The same lists shown on screen, as plain text meant to be pasted into a
+  // convention draft: one identifier line, then that list's segments --
+  // nothing else, no counts.
   function plainTextList(entry) {
     const inv = entry.inventory;
     const facts = entry.facts;
     const lines = [];
-    if (facts) {
-      const from = [facts.sender_qualifier, facts.sender_id].filter(Boolean).join(" ");
-      const to = [facts.receiver_qualifier, facts.receiver_id].filter(Boolean).join(" ");
-      lines.push(`From: ${from || "—"}`);
-      lines.push(`To: ${to || "—"}`);
-      lines.push(`Interchange version: ${facts.interchange_version || "—"}`);
-      lines.push(`Usage: ${facts.usage_indicator || "—"}`);
-      if (facts.group_versions.length) lines.push(`Group release: ${facts.group_versions.join(", ")}`);
-      lines.push("");
+
+    if (inv.envelope_segments.length) {
+      lines.push(envelopeListId(facts));
+      lines.push(inv.envelope_segments.join(", "));
     }
-    lines.push(`Envelope: ${inv.envelope_segments.join(", ")}`);
+
     for (const ts of inv.transaction_sets) {
-      lines.push("");
-      const release = ts.releases.length ? `, release ${ts.releases.join("/")}` : "";
-      lines.push(`${ts.transaction_set_id} (${ts.occurrences} occurrence${ts.occurrences === 1 ? "" : "s"}${release})`);
-      lines.push(`  ${ts.segments.join(", ")}`);
+      if (lines.length) lines.push("");
+      lines.push(tsListId(ts, facts));
+      lines.push(ts.segments.join(", "));
     }
+
     return lines.join("\n");
   }
 
@@ -192,32 +203,18 @@
       return panel;
     }
 
-    if (entry.facts) panel.appendChild(factsLine(entry.facts));
     panel.appendChild(severityCountsRow(entry.severity_counts));
     const diags = diagnosticsList(entry.diagnostics);
     if (diags) panel.appendChild(diags);
 
     const inv = entry.inventory;
     if (inv.envelope_segments.length) {
-      panel.appendChild(el("h3", { text: "Envelope" }));
-      panel.appendChild(segmentChips(inv.envelope_segments));
+      panel.appendChild(listBlock(envelopeListId(entry.facts), inv.envelope_segments));
     }
-
     for (const ts of inv.transaction_sets) {
-      const group = el("div", { class: "ts-group" });
-      const occ = ts.occurrences === 1 ? "1 occurrence" : `${ts.occurrences} occurrences`;
-      const release = ts.releases.length ? ` · release ${ts.releases.join(", ")}` : "";
-      group.appendChild(
-        el("h3", {}, [
-          document.createTextNode(ts.transaction_set_id + " "),
-          el("span", { class: "occurrences", text: `(${occ}${release})` }),
-        ])
-      );
-      group.appendChild(segmentChips(ts.segments));
-      panel.appendChild(group);
+      panel.appendChild(listBlock(tsListId(ts, entry.facts), ts.segments));
     }
 
-    panel.appendChild(el("h3", { text: "Segment list" }));
     panel.appendChild(copyBlock(plainTextList(entry)));
 
     const details = el("details", { class: "cleansed-wrap" });
