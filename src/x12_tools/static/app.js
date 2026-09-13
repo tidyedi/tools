@@ -114,28 +114,28 @@
   ];
 
   // The six envelope segments are mandatory in every X12 interchange by the
-  // standard itself -- not a per-convention choice -- so default to "M"
-  // rather than leaving it for you to set on every single row.
+  // standard itself -- not a per-convention choice -- so their Requirement
+  // cell is fixed at "M", not an editable dropdown at all.
   const ALWAYS_MANDATORY = new Set(["ISA", "GS", "ST", "SE", "GE", "IEA"]);
 
-  function requirementSelect(segmentId) {
+  function requirementCell(segmentId) {
+    if (ALWAYS_MANDATORY.has(segmentId)) return el("td", { text: "M", class: "mono" });
     const select = el(
       "select",
       { class: "editable-select" },
       REQUIREMENT_OPTIONS.map((opt) => el("option", { value: opt.value, text: opt.label }))
     );
-    if (ALWAYS_MANDATORY.has(segmentId)) select.value = "M";
     return el("td", {}, [select]);
   }
 
   // One transaction set type's segment list as an editable convention table:
   // Segment, Elements and Used come from the EDI (read-only); Segment name is
-  // pre-filled from a local X12 reference when known, and Requirement
-  // defaults to Mandatory for the six envelope segments (editable either
-  // way); Notes starts blank. "Copy table" reads the table's current state
-  // (including your edits) as tab-separated text, ready to paste into a
-  // spreadsheet -- the identifier is repeated on every row so a pasted table
-  // still says which convention it's for.
+  // pre-filled from a local X12 reference when known (editable); Requirement
+  // is fixed at Mandatory for the six envelope segments and an editable
+  // dropdown for everything else; Notes starts blank. "Copy table" reads the
+  // table's current state (including your edits) as tab-separated text,
+  // ready to paste into a spreadsheet -- the identifier is repeated on every
+  // row so a pasted table still says which convention it's for.
   function conventionTable(ts, facts) {
     const id = tsListId(ts, facts);
     const wrap = el("div", { class: "convention-wrap" });
@@ -155,7 +155,7 @@
         el("td", { text: String(seg.element_count), class: "mono" }),
         el("td", { text: String(seg.populated_count), class: "mono" }),
         nameCell,
-        requirementSelect(seg.segment_id),
+        requirementCell(seg.segment_id),
         notesCell,
       ]);
     });

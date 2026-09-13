@@ -13,7 +13,11 @@ segments, not transaction-set content, but they are still segments that show
 up around every transaction set's own -- so each type's list is the envelope
 segments (``ISA``/``GS`` first, ``GE``/``IEA`` last) plus everything seen
 inside any ``ST``..``SE`` loop of that type, deduplicated, in first-appearance
-order within each part.
+order within each part -- except ``SE``, which always sorts to the end of
+that part (see :meth:`_Group.entries`), since it closes every occurrence and
+so belongs right before ``GE``/``IEA`` regardless of where it first happened
+to appear across occurrences. The order is always ``ISA, GS, ST, ...,
+SE, GE, IEA``.
 
 Each entry also carries two counts:
 
@@ -124,9 +128,20 @@ class _Group:
             self.releases.append(release)
 
     def entries(self) -> list[SegmentEntry]:
+        # SE always closes a transaction set, so it belongs at the end of the
+        # body -- but "first-appearance order" alone can't guarantee that: a
+        # later occurrence can introduce a segment type the first occurrence's
+        # SE had already been recorded ahead of (e.g. occurrence 1 is
+        # ST/BEG/SE, occurrence 2 adds a REF before its own SE -- REF is new,
+        # so it would otherwise land after occurrence 1's SE). Sorting SE to
+        # the end, rather than trusting where it first showed up, keeps the
+        # merged list's order matching what any single occurrence actually
+        # looks like on the wire.
+        ids = [sid for sid in self.segments if sid != "SE"]
+        if "SE" in self.element_counts:
+            ids.append("SE")
         return [
-            SegmentEntry(sid, self.element_counts[sid], len(self.populated_positions[sid]))
-            for sid in self.segments
+            SegmentEntry(sid, self.element_counts[sid], len(self.populated_positions[sid])) for sid in ids
         ]
 
 

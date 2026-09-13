@@ -55,9 +55,32 @@ def test_two_occurrences_of_same_transaction_set_are_merged(two_orders_edi: str)
     assert ts.transaction_set_id == "850"
     # First occurrence contributes ST, BEG, N1, SE; the second adds PO1 (not
     # already seen) but repeats ST/BEG/SE without duplicating them. Envelope
-    # segments (ISA/GS header, GE/IEA trailer) are folded around them.
-    assert _ids(ts.segments) == ["ISA", "GS", "ST", "BEG", "N1", "SE", "PO1", "GE", "IEA"]
+    # segments (ISA/GS header, GE/IEA trailer) are folded around them, and SE
+    # sorts to the end of the body regardless of when it was first seen.
+    assert _ids(ts.segments) == ["ISA", "GS", "ST", "BEG", "N1", "PO1", "SE", "GE", "IEA"]
     assert ts.releases == ["004010"]
+
+
+def test_se_always_sorts_last_even_when_a_later_occurrence_adds_a_new_segment() -> None:
+    # Occurrence 1 is ST/BEG/SE; occurrence 2 introduces REF before its own
+    # SE. REF is new, so naive first-appearance order would put it after
+    # occurrence 1's SE -- SE must still land at the very end of the merged
+    # list, immediately before GE/IEA.
+    edi = (
+        "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *"
+        "240101*1200*U*00401*000000006*0*P*:~"
+        "GS*PO*SENDERGS*RECEIVERID*20240101*1200*1*X*004010~"
+        "ST*850*0001~BEG*00*NE*PO0001**20240101~SE*3*0001~"
+        "ST*850*0002~BEG*00*NE*PO0002**20240101~REF*IA*INTERNAL~SE*4*0002~"
+        "GE*2*1~IEA*1*000000006~"
+    )
+    result = cleanse(edi)[0]
+    assert result.payload is not None
+    inventory = build_inventory(result.payload)
+
+    assert _ids(inventory.transaction_sets[0].segments) == [
+        "ISA", "GS", "ST", "BEG", "REF", "SE", "GE", "IEA",
+    ]
 
 
 def test_populated_count_excludes_blank_elements(two_orders_edi: str) -> None:
