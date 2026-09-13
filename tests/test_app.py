@@ -99,3 +99,17 @@ def test_codes_page_loads() -> None:
     response = client.get("/codes")
     assert response.status_code == 200
     assert "Code inventory" in response.text
+
+
+def test_reference_page_lists_known_segments_and_elements() -> None:
+    response = client.get("/reference")
+    assert response.status_code == 200
+    assert "Interchange Control Header" in response.text  # ISA, from segment_names.py
+    assert "Functional Identifier Code" in response.text  # GS01, from element_definitions.py
+
+
+def test_segments_and_codes_pages_link_to_reference() -> None:
+    for path in ("/segments", "/codes"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'href="/reference"' in response.text

@@ -73,12 +73,13 @@ textarea#edi {
 .file-pick { position: relative; overflow: hidden; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
 .file-pick input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
-button {
+button, .button-link {
   font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border);
   background: var(--panel); color: var(--text); cursor: pointer;
+  display: inline-block; text-decoration: none; line-height: 1.2;
 }
 button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-button.ghost { background: transparent; }
+button.ghost, .button-link.ghost { background: transparent; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .form-error { color: var(--fatal); }

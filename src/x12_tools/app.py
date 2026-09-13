@@ -9,6 +9,7 @@ Routes:
 * ``POST /api/segments``  -- cleanse pasted EDI and return its segment inventory as JSON.
 * ``GET  /codes``         -- the code-inventory tool page.
 * ``POST /api/codes``     -- cleanse pasted EDI and return its coded-element inventory as JSON.
+* ``GET  /reference``     -- what's in segment_names.py and element_definitions.py, browsable.
 * ``GET  /healthz``       -- liveness probe.
 
 Nothing submitted is stored, logged, or persisted -- each request is cleansed
@@ -29,6 +30,7 @@ from fastapi.templating import Jinja2Templates
 
 from x12_tools import __version__
 from x12_tools.codes import build_code_inventory
+from x12_tools.element_definitions import SEGMENT_ELEMENTS
 from x12_tools.engine import cleanse
 from x12_tools.inventory import build_inventory
 from x12_tools.models import MAX_EDI_CHARS, SegmentsRequest
@@ -115,6 +117,37 @@ def create_app() -> FastAPI:
                     for s in SAMPLES
                 ],
                 "current": "codes",
+            },
+        )
+
+    @app.get("/reference", response_class=HTMLResponse)
+    def reference_page(request: Request) -> HTMLResponse:
+        segment_ids_with_elements = set(SEGMENT_ELEMENTS)
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "reference.html",
+            {
+                "app_version": __version__,
+                "segment_names": SEGMENT_NAMES,
+                "segment_elements": {
+                    segment_id: [
+                        {
+                            "position": e.position,
+                            "name": e.name,
+                            "requirement": e.requirement,
+                            "data_type": e.data_type,
+                            "min_length": e.min_length,
+                            "max_length": e.max_length,
+                        }
+                        for e in elements
+                    ]
+                    for segment_id, elements in sorted(SEGMENT_ELEMENTS.items())
+                },
+                # Segments with a name but no full element breakdown yet --
+                # shown separately so the gap between the two references is
+                # visible rather than silently implied.
+                "name_only_segments": sorted(set(SEGMENT_NAMES) - segment_ids_with_elements),
+                "current": "reference",
             },
         )
 

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reference data — X12 Tools</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<nav class="navbar" aria-label="Site"><div class="wrap">{% include "_nav.html" %}</div></nav>
+<header class="site-header">
+  <div class="wrap">
+    <h1>Reference data</h1>
+    <p class="tagline">
+      What the Segment inventory and Code inventory tools currently know,
+      straight from
+      <a href="https://github.com/tidyedi/tools/blob/main/src/x12_tools/segment_names.py">segment_names.py</a>
+      and
+      <a href="https://github.com/tidyedi/tools/blob/main/src/x12_tools/element_definitions.py">element_definitions.py</a>.
+      Not exhaustive of the full X12 dictionary -- a segment or element
+      missing here just hasn't been added yet.
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="panel">
+    <h2>Element definitions ({{ segment_elements | length }} segments)</h2>
+    <p class="hint">
+      Every element x12-tools knows the name, requirement, data type, and
+      length of -- what the Code inventory tool scans for (the ID-type rows)
+      and what a convention table's Segment name column pre-fills from.
+    </p>
+    <div class="convention-table-wrap">
+      <table class="convention-table">
+        <thead>
+          <tr>
+            <th>Segment</th><th>Pos</th><th>Name</th><th>Req</th><th>Type</th><th>Min</th><th>Max</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for segment_id, elements in segment_elements.items() %}
+          {% for e in elements %}
+          <tr>
+            <td class="mono">{{ segment_id }}</td>
+            <td class="mono">{{ e.position }}</td>
+            <td>{{ e.name }}</td>
+            <td class="mono">{{ e.requirement }}</td>
+            <td class="mono">{{ e.data_type }}</td>
+            <td class="mono">{{ e.min_length }}</td>
+            <td class="mono">{{ e.max_length }}</td>
+          </tr>
+          {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Segment names ({{ segment_names | length }} segments)</h2>
+    <p class="hint">
+      Every segment ID x12-tools has a name for -- pre-fills the Segment name
+      column in the convention table.
+      {% if name_only_segments %}The
+      {{ name_only_segments | length }} marked * have a name here but no
+      element breakdown above yet.{% endif %}
+    </p>
+    <div class="convention-table-wrap">
+      <table class="convention-table">
+        <thead><tr><th>Segment</th><th>Name</th></tr></thead>
+        <tbody>
+          {% for segment_id, name in segment_names | dictsort %}
+          <tr>
+            <td class="mono">{{ segment_id }}{{ "*" if segment_id in name_only_segments else "" }}</td>
+            <td>{{ name }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer class="wrap site-footer">
+  {% include "_nav.html" %}
+  <p>x12-tools {{ app_version }} · nothing you paste is stored or logged</p>
+</footer>
+</body>
+</html>
