@@ -53,8 +53,36 @@ window.tableTools = (function () {
     });
   }
 
-  function downloadRows(rows, columns, format, baseName, getFile) {
+  function triggerBlobDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = el("a", { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // A real .xlsx workbook (bold header, frozen, sized columns) is built
+  // server-side -- keeps every page free of a client-side spreadsheet
+  // library, matching this project's stance of loading only its own JS.
+  async function downloadXlsx(records, baseName) {
+    const response = await fetch("/api/export/xlsx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: baseName, records }),
+    });
+    if (!response.ok) {
+      throw new Error(`export failed (${response.status})`);
+    }
+    triggerBlobDownload(await response.blob(), `${baseName}.xlsx`);
+  }
+
+  async function downloadRows(rows, columns, format, baseName, getFile) {
     const records = toRecords(rows, columns, getFile);
+    if (format === "excel") {
+      await downloadXlsx(records, baseName);
+      return;
+    }
     let content, mime, ext;
     if (format === "json") {
       content = JSON.stringify(records, null, 2);
@@ -69,19 +97,11 @@ window.tableTools = (function () {
       mime = "text/html";
       ext = "html";
     } else {
-      // csv and excel both produce a real CSV -- Excel opens .csv natively,
-      // and this avoids adding an external spreadsheet library.
       content = toDelimited(records, ",");
       mime = "text/csv";
       ext = "csv";
     }
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = el("a", { href: url, download: `${baseName}.${ext}` });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    triggerBlobDownload(new Blob([content], { type: mime }), `${baseName}.${ext}`);
   }
 
   // A format <select> plus a Download button. `getRows` returns the
@@ -93,14 +113,30 @@ window.tableTools = (function () {
       {},
       [
         ["csv", "CSV"],
-        ["excel", "Excel (CSV)"],
+        ["excel", "Excel (XLSX)"],
         ["json", "JSON"],
         ["pipe", "Pipe-delimited"],
         ["html", "HTML"],
       ].map(([value, text]) => el("option", { value, text }))
     );
     const btn = el("button", { type: "button", class: "ghost", text: "Download" });
-    btn.addEventListener("click", () => downloadRows(getRows(), columns, select.value, baseName, getFile));
+    btn.addEventListener("click", async () => {
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      try {
+        await downloadRows(getRows(), columns, select.value, baseName, getFile);
+      } catch (err) {
+        btn.textContent = "Download failed";
+        setTimeout(() => {
+          btn.textContent = originalText;
+        }, 2000);
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        if (btn.textContent === "Download failed") return; // let the timeout restore it
+        btn.textContent = originalText;
+      }
+    });
     wrap.appendChild(select);
     wrap.appendChild(btn);
     return wrap;

@@ -191,3 +191,31 @@ def test_api_convention_reports_missing_pdftotext(monkeypatch: pytest.MonkeyPatc
     response = client.post("/api/convention", files={"files": ("ic.pdf", b"%PDF-fake", "application/pdf")})
     assert response.status_code == 503
     assert "poppler" in response.json()["detail"]
+
+
+def test_api_export_xlsx_returns_a_workbook() -> None:
+    response = client.post(
+        "/api/export/xlsx",
+        json={"filename": "code-inventory", "records": [{"Ref": "ST01", "Value": "850"}]},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert 'filename="code-inventory.xlsx"' in response.headers["content-disposition"]
+    assert response.content[:2] == b"PK"  # .xlsx is a zip archive
+
+
+def test_api_export_xlsx_sanitizes_the_filename() -> None:
+    response = client.post(
+        "/api/export/xlsx",
+        json={"filename": "../../etc/passwd", "records": [{"A": 1}]},
+    )
+    assert response.status_code == 200
+    assert 'filename="etcpasswd.xlsx"' in response.headers["content-disposition"]
+
+
+def test_api_export_xlsx_rejects_too_many_rows() -> None:
+    records = [{"A": i} for i in range(50_001)]
+    response = client.post("/api/export/xlsx", json={"filename": "big", "records": records})
+    assert response.status_code == 422

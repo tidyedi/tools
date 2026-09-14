@@ -12,6 +12,7 @@ Routes:
 * ``GET  /reference``     -- what's in segment_names.py and element_definitions.py, browsable.
 * ``GET  /convention``    -- the convention-PDF importer tool page.
 * ``POST /api/convention``-- parse an uploaded DLA/DLMS convention PDF into a segment table and per-segment element/code detail.
+* ``POST /api/export/xlsx``-- turn a table's current (filtered/sorted) rows into a real .xlsx workbook.
 * ``GET  /healthz``       -- liveness probe.
 
 Nothing submitted is stored, logged, or persisted -- each request is cleansed
@@ -26,7 +27,7 @@ from typing import Any
 
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -36,9 +37,10 @@ from x12_tools.convention_pdf import PdftotextMissing, parse_convention_pdf
 from x12_tools.element_definitions import RELEASE, SEGMENT_ELEMENTS, element_source
 from x12_tools.engine import cleanse
 from x12_tools.inventory import build_inventory
-from x12_tools.models import MAX_EDI_CHARS, MAX_PDF_BYTES, SegmentsRequest
+from x12_tools.models import MAX_EDI_CHARS, MAX_PDF_BYTES, ExportXlsxRequest, SegmentsRequest
 from x12_tools.samples import SAMPLES
 from x12_tools.segment_names import SEGMENT_NAMES
+from x12_tools.xlsx_export import build_xlsx
 
 _HERE = Path(__file__).parent
 _TEMPLATES = Jinja2Templates(directory=str(_HERE / "templates"))
@@ -266,6 +268,15 @@ def create_app() -> FastAPI:
                 return JSONResponse({"detail": f"{filename}: {exc}"}, status_code=422)
             results.append({"filename": filename, **parsed.as_dict()})
         return JSONResponse({"results": results})
+
+    @app.post("/api/export/xlsx")
+    def api_export_xlsx(req: ExportXlsxRequest) -> Response:
+        content = build_xlsx(req.records)
+        return Response(
+            content=content,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{req.filename}.xlsx"'},
+        )
 
     return app
 
