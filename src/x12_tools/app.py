@@ -33,7 +33,7 @@ from fastapi.templating import Jinja2Templates
 from x12_tools import __version__
 from x12_tools.codes import build_code_inventory
 from x12_tools.convention_pdf import PdftotextMissing, parse_convention_pdf
-from x12_tools.element_definitions import SEGMENT_ELEMENTS
+from x12_tools.element_definitions import RELEASE, SEGMENT_ELEMENTS, element_source
 from x12_tools.engine import cleanse
 from x12_tools.inventory import build_inventory
 from x12_tools.models import MAX_EDI_CHARS, MAX_PDF_BYTES, SegmentsRequest
@@ -50,18 +50,20 @@ TOOLS: list[dict[str, str]] = [
         "slug": "segments",
         "title": "Segment inventory",
         "blurb": (
-            "Paste an EDI interchange, cleanse it, and get the unique segments it "
-            "contains, grouped by transaction set type -- a starting point for "
-            "writing an implementation convention."
+            "Paste an EDI interchange, cleanse it, and get its unique segments -- "
+            "each one listed once, not once per repeat -- grouped by transaction "
+            "set type. A checklist of what this EDI requires, for writing an "
+            "implementation convention."
         ),
     },
     {
         "slug": "codes",
         "title": "Code inventory",
         "blurb": (
-            "Paste an EDI interchange, cleanse it, and get every distinct value "
-            "seen in each element (N101, REF01, BEG03, and similar) -- a starting "
-            "point for spotting codes your convention doesn't cover yet."
+            "Paste an EDI interchange, cleanse it, and see every element's value "
+            "in its actual position in the file, one row per occurrence, in true "
+            "document order -- for troubleshooting: answer 'where did that value "
+            "come from?' without hunting through the raw text."
         ),
     },
     {
@@ -72,6 +74,15 @@ TOOLS: list[dict[str, str]] = [
             "segment table plus every element's definition and code meanings, "
             "extracted straight from the document -- a starting point for "
             "building a convention table without retyping it by hand."
+        ),
+    },
+    {
+        "slug": "reference",
+        "title": "Reference data",
+        "blurb": (
+            "Browse every segment and element this tool knows about, straight "
+            "from segment_names.py and element_definitions.py -- searchable "
+            "and sortable, so you can check coverage before pasting a file."
         ),
     },
 ]
@@ -136,30 +147,40 @@ def create_app() -> FastAPI:
     @app.get("/reference", response_class=HTMLResponse)
     def reference_page(request: Request) -> HTMLResponse:
         segment_ids_with_elements = set(SEGMENT_ELEMENTS)
+        segment_rows = [
+            {
+                "segment": segment_id,
+                "name": name,
+                "release": RELEASE,
+                "has_elements": segment_id in segment_ids_with_elements,
+            }
+            for segment_id, name in sorted(SEGMENT_NAMES.items())
+        ]
+        element_rows = [
+            {
+                "ref": f"{segment_id}{e.position:02d}",
+                "segment": segment_id,
+                "position": e.position,
+                "name": e.name,
+                "requirement": e.requirement,
+                "data_type": e.data_type,
+                "min_length": e.min_length,
+                "max_length": e.max_length,
+                "release": RELEASE,
+                "source": element_source(segment_id),
+            }
+            for segment_id, elements in sorted(SEGMENT_ELEMENTS.items())
+            for e in elements
+        ]
         return _TEMPLATES.TemplateResponse(
             request,
             "reference.html",
             {
                 "app_version": __version__,
-                "segment_names": SEGMENT_NAMES,
-                "segment_elements": {
-                    segment_id: [
-                        {
-                            "position": e.position,
-                            "name": e.name,
-                            "requirement": e.requirement,
-                            "data_type": e.data_type,
-                            "min_length": e.min_length,
-                            "max_length": e.max_length,
-                        }
-                        for e in elements
-                    ]
-                    for segment_id, elements in sorted(SEGMENT_ELEMENTS.items())
-                },
-                # Segments with a name but no full element breakdown yet --
-                # shown separately so the gap between the two references is
-                # visible rather than silently implied.
-                "name_only_segments": sorted(set(SEGMENT_NAMES) - segment_ids_with_elements),
+                "segment_count": len(segment_rows),
+                "element_segment_count": len(SEGMENT_ELEMENTS),
+                "segment_rows": segment_rows,
+                "element_rows": element_rows,
                 "current": "reference",
             },
         )

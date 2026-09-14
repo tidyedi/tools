@@ -26,65 +26,93 @@
 
 <main class="wrap">
   <div class="panel">
-    <h2>Element definitions ({{ segment_elements | length }} segments)</h2>
+    <h2>Segment names (<span id="segment-count">{{ segment_count }}</span> segments)</h2>
     <p class="hint">
-      Every element x12-tools knows the name, requirement, data type, and
-      length of -- what the Code inventory tool scans for and what a
-      convention table's Segment name column pre-fills from.
+      Every segment ID x12-tools has a name for -- pre-fills the Segment name
+      column in the convention table. <strong>Has elements</strong> shows
+      whether that segment also has a full position-by-position breakdown
+      below, in Element definitions -- "No" just means the breakdown hasn't
+      been added yet, not that the segment name is wrong.
     </p>
+    <div class="filter-bar">
+      <label class="inline"><span>Segment:</span> <input type="text" id="seg-filter-segment" placeholder="filter…"></label>
+      <label class="inline"><span>Name:</span> <input type="text" id="seg-filter-name" placeholder="filter…"></label>
+      <label class="inline">
+        <span>Has elements:</span>
+        <select id="seg-filter-has-elements">
+          <option value="all">All</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </label>
+      <label class="inline"><input type="checkbox" id="seg-group-by-letter"> <span>Roll up by first letter</span></label>
+      <span id="seg-download"></span>
+    </div>
+    <p class="hint" id="seg-count-line"></p>
     <div class="convention-table-wrap">
-      <table class="convention-table">
+      <table class="convention-table" id="seg-table">
         <thead>
           <tr>
-            <th>Ref</th><th>Name</th><th>Req</th><th>Type</th><th>Min</th><th>Max</th>
+            <th class="sortable" data-key="segment">Segment</th>
+            <th class="sortable" data-key="name">Name</th>
+            <th class="sortable" data-key="release">Release</th>
+            <th class="sortable" data-key="has_elements">Has elements</th>
           </tr>
         </thead>
-        <tbody>
-          {% for segment_id, elements in segment_elements.items() %}
-          {% for e in elements %}
-          <tr>
-            <td class="mono">{{ segment_id }}{{ "%02d"|format(e.position) }}</td>
-            <td>{{ e.name }}</td>
-            <td class="mono">{{ e.requirement }}</td>
-            <td class="mono">{{ e.data_type }}</td>
-            <td class="mono">{{ e.min_length }}</td>
-            <td class="mono">{{ e.max_length }}</td>
-          </tr>
-          {% endfor %}
-          {% endfor %}
-        </tbody>
+        <tbody id="seg-tbody"></tbody>
       </table>
     </div>
   </div>
 
   <div class="panel">
-    <h2>Segment names ({{ segment_names | length }} segments)</h2>
+    <h2>Element definitions (<span id="element-count">{{ element_segment_count }}</span> segments)</h2>
     <p class="hint">
-      Every segment ID x12-tools has a name for -- pre-fills the Segment name
-      column in the convention table.
-      {% if name_only_segments %}The
-      {{ name_only_segments | length }} marked * have a name here but no
-      element breakdown above yet.{% endif %}
+      Every element x12-tools knows the name, requirement, data type, and
+      length of -- what the Code inventory tool scans for and what a
+      convention table's Segment name column pre-fills from.
+      <strong>Source</strong> is "x12-tools" for definitions hand-curated
+      from DLA convention PDFs and general X12 004010 knowledge, or "Stedi"
+      for the 2026 backfill sourced from Stedi's public X12 reference.
     </p>
+    <div class="filter-bar">
+      <label class="inline"><span>Ref:</span> <input type="text" id="el-filter-ref" placeholder="filter…"></label>
+      <label class="inline"><span>Name:</span> <input type="text" id="el-filter-name" placeholder="filter…"></label>
+      <label class="inline"><span>Req:</span> <input type="text" id="el-filter-requirement" placeholder="filter…"></label>
+      <label class="inline"><span>Type:</span> <input type="text" id="el-filter-data_type" placeholder="filter…"></label>
+      <label class="inline"><span>Source:</span> <input type="text" id="el-filter-source" placeholder="filter…"></label>
+      <label class="inline"><input type="checkbox" id="el-group-by-segment" checked> <span>Roll up by segment</span></label>
+      <span id="el-download"></span>
+    </div>
+    <p class="hint" id="el-count-line"></p>
     <div class="convention-table-wrap">
-      <table class="convention-table">
-        <thead><tr><th>Segment</th><th>Name</th></tr></thead>
-        <tbody>
-          {% for segment_id, name in segment_names | dictsort %}
+      <table class="convention-table" id="el-table">
+        <thead>
           <tr>
-            <td class="mono">{{ segment_id }}{{ "*" if segment_id in name_only_segments else "" }}</td>
-            <td>{{ name }}</td>
+            <th class="sortable" data-key="ref">Ref</th>
+            <th class="sortable" data-key="name">Name</th>
+            <th class="sortable" data-key="requirement">Req</th>
+            <th class="sortable" data-key="data_type">Type</th>
+            <th class="sortable" data-key="min_length">Min</th>
+            <th class="sortable" data-key="max_length">Max</th>
+            <th class="sortable" data-key="release">Release</th>
+            <th class="sortable" data-key="source">Source</th>
           </tr>
-          {% endfor %}
-        </tbody>
+        </thead>
+        <tbody id="el-tbody"></tbody>
       </table>
     </div>
   </div>
 </main>
 
+<script id="segment-rows-data" type="application/json">{{ segment_rows | tojson }}</script>
+<script id="element-rows-data" type="application/json">{{ element_rows | tojson }}</script>
+
 <footer class="wrap site-footer">
   {% include "_nav.html" %}
   <p>x12-tools {{ app_version }} · nothing you paste is stored or logged</p>
 </footer>
+
+<script src="/static/table-tools.js"></script>
+<script src="/static/reference.js"></script>
 </body>
 </html>

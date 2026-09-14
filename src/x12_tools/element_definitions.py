@@ -911,3 +911,30 @@ SEGMENT_ELEMENTS: dict[str, list[ElementDefinition]] = {
         ElementDefinition(5, "Interchange Note Code", "M", "ID", 3, 3),
     ],
 }
+
+#: The X12 release/version this whole reference targets. Every segment and
+#: element definition here is 004010 -- a later release can rename or
+#: resize a position, so this isn't assumed to hold if the project ever
+#: adds a second release's worth of definitions.
+RELEASE = "004010"
+
+#: segment_id -> where its element breakdown came from. Segments not listed
+#: here predate this tracking (curated by hand against DLA convention PDFs
+#: and general X12 004010 knowledge, not scraped from any one site).
+_SOURCES: dict[str, str] = {
+    sid: "Stedi"
+    for sid in (
+        "ACK", "AK1", "AK2", "AK3", "AK4", "AK5", "AK9", "B10", "B2", "B2A",
+        "BCH", "BGN", "BIG", "CAD", "CLM", "CLP", "COB", "CSH", "CTX", "CUR",
+        "ENT", "G61", "G62", "G72", "HD", "IK3", "IK4", "IK5", "IT1", "IT3",
+        "ITA", "K3", "L11", "L3", "LIN", "LUI", "LX", "MAN", "MSG", "N2",
+        "NTE", "PLB", "PO4", "POC", "PRF", "PRV", "PWK", "RMR", "S5", "SCH",
+        "SDQ", "SLN", "SV1", "SV2", "SVC", "TA1",
+    )
+}
+
+
+def element_source(segment_id: str) -> str:
+    """Where ``segment_id``'s element breakdown came from -- "Stedi" for the
+    2026 backfill, "x12-tools" (hand-curated) for everything earlier."""
+    return _SOURCES.get(segment_id, "x12-tools")
