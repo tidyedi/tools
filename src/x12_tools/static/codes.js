@@ -16,6 +16,8 @@
   const samplesDataEl = document.getElementById("samples-data");
   const SAMPLES = samplesDataEl ? JSON.parse(samplesDataEl.textContent) : [];
 
+  const { el, downloadControl } = window.tableTools;
+
   fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -77,81 +79,141 @@
     }
   });
 
-  function el(tag, attrs, children) {
-    const node = document.createElement(tag);
-    for (const [key, value] of Object.entries(attrs || {})) {
-      if (key === "class") node.className = value;
-      else if (key === "text") node.textContent = value;
-      else node.setAttribute(key, value);
-    }
-    for (const child of children || []) {
-      node.appendChild(child);
-    }
-    return node;
-  }
-
   // Same shape as the segment-inventory identifier: release.edi.sender-receiver.date.
-  function tsListId(ts, facts) {
-    const release = ts.releases.length ? ts.releases.join("+") : "UNKNOWN";
+  function interchangeId(facts) {
     const sender = (facts && facts.sender_id) || "UNKNOWN";
     const receiver = (facts && facts.receiver_id) || "UNKNOWN";
     const date = (facts && facts.interchange_date) || "UNKNOWN";
-    return `${release}.${ts.transaction_set_id}.${sender}-${receiver}.${date}`;
+    return `${sender}-${receiver}.${date}`;
   }
 
-  // One raw segment's tokens (segment ID first, then every data element),
-  // rendered with the token at `position` (1-based, matching X12's own
-  // element numbering, so it lines up with tokens[position]) wrapped in
-  // <mark> -- lets a reviewer see exactly where a "values found" entry came
-  // from on the wire.
-  function rawSegmentLine(tokens, position, separator) {
-    const line = el("div", { class: "raw-segment" });
-    tokens.forEach((tok, i) => {
-      if (i > 0) line.appendChild(document.createTextNode(separator));
-      line.appendChild(i === position ? el("mark", { text: tok }) : document.createTextNode(tok));
-    });
-    return line;
-  }
-
-  function rawSegmentsCell(c, separator) {
+  // One occurrence's raw segment, with the token at `position` (1-based,
+  // matching X12's own element numbering, so it lines up with tokens[position])
+  // wrapped in <mark> -- shows exactly where this row's value sits on the wire.
+  function rawSegmentCell(o, separator) {
     const cell = el("td", { class: "mono" });
-    for (const tokens of c.raw_segments) {
-      cell.appendChild(rawSegmentLine(tokens, c.position, separator));
-    }
+    const line = el("div", { class: "raw-segment" });
+    o.raw_segment.forEach((tok, i) => {
+      if (i > 0) line.appendChild(document.createTextNode(separator));
+      line.appendChild(i === o.position ? el("mark", { text: tok }) : document.createTextNode(tok));
+    });
+    cell.appendChild(line);
     return cell;
   }
 
-  function codeTable(ts, facts, separator) {
-    const id = tsListId(ts, facts);
-    const wrap = el("div", { class: "convention-wrap" });
-    wrap.appendChild(el("h3", { class: "ts-id", text: id }));
+  const COLUMNS = [
+    { key: "ref", label: "Ref", get: (o) => `${o.segment_id}${String(o.position).padStart(2, "0")}` },
+    { key: "name", label: "Name", get: (o) => o.name },
+    { key: "requirement", label: "Req", get: (o) => o.requirement },
+    { key: "min_length", label: "Min", get: (o) => o.min_length, numeric: true },
+    { key: "max_length", label: "Max", get: (o) => o.max_length, numeric: true },
+    { key: "value", label: "Value", get: (o) => o.value },
+  ];
 
-    if (!ts.codes.length) {
+  // One interchange's occurrence table: sortable by clicking a header
+  // (defaults to -- and can be reset to -- true file order), filterable by
+  // a text box per column, and downloadable in several formats.
+  function occurrenceTable(occurrences, facts, separator) {
+    const wrap = el("div", { class: "convention-wrap" });
+    wrap.appendChild(el("h3", { class: "ts-id", text: interchangeId(facts) }));
+
+    if (!occurrences.length) {
       wrap.appendChild(
-        el("p", {
-          class: "hint",
-          text: "No coded elements covered by element_definitions.py were found here.",
-        })
+        el("p", { class: "hint", text: "No elements covered by element_definitions.py were found here." })
       );
       return wrap;
     }
 
-    const headers = ["Segment", "Pos", "Name", "Req", "Min", "Max", "Values found", "Raw segment"];
-    const thead = el("thead", {}, [el("tr", {}, headers.map((label) => el("th", { text: label })))]);
-    const rows = ts.codes.map((c) =>
-      el("tr", {}, [
-        el("td", { text: c.segment_id, class: "mono" }),
-        el("td", { text: String(c.position), class: "mono" }),
-        el("td", { text: c.name }),
-        el("td", { text: c.requirement, class: "mono" }),
-        el("td", { text: String(c.min_length), class: "mono" }),
-        el("td", { text: String(c.max_length), class: "mono" }),
-        el("td", { text: c.values.join(", ") }),
-        rawSegmentsCell(c, separator),
-      ])
-    );
-    const table = el("table", { class: "convention-table" }, [thead, el("tbody", {}, rows)]);
+    const fileOrder = occurrences.map((o, i) => ({ o, i }));
+    const filters = { ref: "", name: "", requirement: "", value: "" };
+    let sort = null; // { key, dir: 1 | -1 } | null (null = original file order)
+
+    const filterBar = el("div", { class: "filter-bar" });
+    const filterInputs = {};
+    for (const key of ["ref", "name", "requirement", "value"]) {
+      const label = COLUMNS.find((c) => c.key === key)?.label || key;
+      const wrapLabel = el("label", { class: "inline" }, [el("span", { text: `${label}:` })]);
+      const input = el("input", { type: "text", placeholder: "filter…" });
+      input.addEventListener("input", () => {
+        filters[key] = input.value.trim().toLowerCase();
+        renderBody();
+      });
+      filterInputs[key] = input;
+      wrapLabel.appendChild(input);
+      filterBar.appendChild(wrapLabel);
+    }
+
+    const resetBtn = el("button", { type: "button", class: "ghost", text: "Reset order" });
+    resetBtn.addEventListener("click", () => {
+      sort = null;
+      renderBody();
+    });
+    filterBar.appendChild(resetBtn);
+
+    const exportColumns = [
+      ...COLUMNS,
+      { key: "raw_segment", label: "Raw segment", get: (o) => o.raw_segment.join(separator) },
+    ];
+    const downloadPicker = downloadControl(() => currentRows(), exportColumns, "code-inventory");
+    filterBar.appendChild(downloadPicker);
+
+    wrap.appendChild(filterBar);
+
+    const headers = [...COLUMNS, { key: "raw_segment", label: "Raw segment" }];
+    const headRow = el("tr", {}, headers.map((col) => {
+      const th = el("th", { text: col.label });
+      if (col.key !== "raw_segment") {
+        th.classList.add("sortable");
+        th.addEventListener("click", () => {
+          sort = sort && sort.key === col.key ? { key: col.key, dir: -sort.dir } : { key: col.key, dir: 1 };
+          renderBody();
+        });
+      }
+      return th;
+    }));
+    const thead = el("thead", {}, [headRow]);
+    const tbody = el("tbody", {});
+    const table = el("table", { class: "convention-table" }, [thead, tbody]);
+    const countLine = el("p", { class: "hint" });
+    wrap.appendChild(countLine);
     wrap.appendChild(el("div", { class: "convention-table-wrap" }, [table]));
+
+    function currentRows() {
+      let rows = fileOrder.filter(({ o }) => {
+        if (filters.ref && !COLUMNS[0].get(o).toLowerCase().includes(filters.ref)) return false;
+        if (filters.name && !o.name.toLowerCase().includes(filters.name)) return false;
+        if (filters.requirement && !o.requirement.toLowerCase().includes(filters.requirement)) return false;
+        if (filters.value && !o.value.toLowerCase().includes(filters.value)) return false;
+        return true;
+      });
+      if (sort) {
+        const col = COLUMNS.find((c) => c.key === sort.key);
+        rows = rows.slice().sort((a, b) => {
+          const av = col.get(a.o);
+          const bv = col.get(b.o);
+          const cmp = col.numeric ? av - bv : String(av).localeCompare(String(bv));
+          return cmp * sort.dir;
+        });
+      }
+      return rows.map(({ o }) => o);
+    }
+
+    function renderBody() {
+      const rows = currentRows();
+      countLine.textContent = sort
+        ? `Showing ${rows.length} of ${occurrences.length} rows, sorted by ${sort.key} (${sort.dir > 0 ? "asc" : "desc"}).`
+        : `Showing ${rows.length} of ${occurrences.length} rows, in file order.`;
+      tbody.innerHTML = "";
+      for (const o of rows) {
+        const cells = COLUMNS.map((col) =>
+          el("td", { text: String(col.get(o)), class: col.numeric || col.key === "ref" || col.key === "requirement" ? "mono" : "" })
+        );
+        cells.push(rawSegmentCell(o, separator));
+        tbody.appendChild(el("tr", {}, cells));
+      }
+    }
+
+    renderBody();
     return wrap;
   }
 
@@ -184,9 +246,7 @@
       return panel;
     }
 
-    for (const ts of entry.inventory.transaction_sets) {
-      panel.appendChild(codeTable(ts, entry.facts, entry.inventory.separator));
-    }
+    panel.appendChild(occurrenceTable(entry.inventory.occurrences, entry.facts, entry.inventory.separator));
     return panel;
   }
 

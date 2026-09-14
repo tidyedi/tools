@@ -75,9 +75,9 @@ def test_api_codes_happy_path(two_orders_edi: str) -> None:
     response = client.post("/api/codes", json={"edi": two_orders_edi})
     assert response.status_code == 200
     data = response.json()
-    codes = data["interchanges"][0]["inventory"]["transaction_sets"][0]["codes"]
-    gs01 = next(c for c in codes if c["segment_id"] == "GS" and c["position"] == 1)
-    assert gs01["values"] == ["PO"]
+    occurrences = data["interchanges"][0]["inventory"]["occurrences"]
+    gs01 = next(o for o in occurrences if o["segment_id"] == "GS" and o["position"] == 1)
+    assert gs01["value"] == "PO"
     assert gs01["name"] == "Functional Identifier Code"
 
 

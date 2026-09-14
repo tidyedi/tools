@@ -109,8 +109,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .convention-table-wrap { overflow-x: auto; }
 
 .raw-segment { white-space: pre; }
-.raw-segment + .raw-segment { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); }
 .raw-segment mark { background: var(--highlight-bg); color: var(--highlight-text); border-radius: 3px; padding: 0 2px; }
+.convention-table th.sortable { cursor: pointer; user-select: none; }
+.convention-table th.sortable:hover { color: var(--accent); }
 
 .filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-block: 10px; }
 .filter-bar .inline { gap: 4px; }

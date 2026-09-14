@@ -15,8 +15,11 @@
     <p class="tagline">
       Paste an EDI interchange. It's cleansed with
       <a href="https://github.com/tidyedi/x12-tidy">x12-tidy</a> first, then
-      split into its unique segments, grouped by transaction set type -- a
-      starting point for writing an implementation convention.
+      reduced to its <strong>unique</strong> segments, grouped by transaction
+      set type -- each segment listed once, however many times it actually
+      repeats in the file. The point is a checklist of which segments this
+      EDI requires, for writing an implementation convention -- not a replay
+      of the document.
     </p>
   </div>
 </header>
