@@ -21,7 +21,7 @@
   let segmentGroupByLoop = false;
   let segmentSort = null; // { key, dir }
 
-  const elementFilters = { ref: "", elem: "", name: "", required: "", type: "", code: "" };
+  const elementFilters = { ref: "", elem: "", name: "", required: "", type: "", usage: "", code: "" };
   let elementSort = null;
 
   clearBtn.addEventListener("click", () => {
@@ -209,7 +209,6 @@
 
   function segmentFileSection(filename, rows) {
     const wrap = el("div", { class: "convention-wrap" });
-    wrap.appendChild(el("h3", { class: "ts-id", text: filename }));
 
     const thead = el("thead", {}, [
       sortableHeaderRow(SEGMENT_COLUMNS, () => segmentSort, (s) => {
@@ -239,14 +238,16 @@
     }
 
     const table = el("table", { class: "convention-table" }, [thead, tbody]);
-    wrap.appendChild(el("div", { class: "convention-table-wrap" }, [table]));
+    const summary = el("summary", { class: "ts-id", text: `${filename} (${rows.length} rows)` });
+    wrap.appendChild(
+      el("details", { open: "" }, [summary, el("div", { class: "convention-table-wrap" }, [table])])
+    );
     return wrap;
   }
 
   // --- Element table ---------------------------------------------------
 
   const ELEMENT_COLUMNS = [
-    { key: "segment_id", label: "Segment", get: (r) => r.segment_id },
     { key: "ref", label: "Ref", get: (r) => r.ref },
     { key: "element_number", label: "Elem#", get: (r) => r.element_number },
     { key: "name", label: "Element Name", get: (r) => r.name },
@@ -264,25 +265,30 @@
       if (f.ref && !r.ref.toLowerCase().includes(f.ref)) return false;
       if (f.elem && !r.element_number.toLowerCase().includes(f.elem)) return false;
       if (f.name && !r.name.toLowerCase().includes(f.name)) return false;
-      if (f.required && !r.requirement.toLowerCase().includes(f.required)) return false;
-      if (f.type && !r.data_type.toLowerCase().includes(f.type)) return false;
-      if (f.code && !(r.code || "").toLowerCase().includes(f.code)) return false;
+      if (f.required && r.requirement !== f.required) return false;
+      if (f.type && r.data_type !== f.type) return false;
+      if (f.usage && r.usage !== f.usage) return false;
+      if (f.code && (r.code || "") !== f.code) return false;
       return true;
     });
     return applySort(rows, elementSort, ELEMENT_COLUMNS);
   }
 
+  // Distinct, non-empty values a column actually takes across every parsed
+  // file -- populates its filter dropdown so only real choices are offered.
+  function distinctValues(getter) {
+    return [...new Set(elementRows.map(getter).filter((v) => v))].sort();
+  }
+
   function elementTableControls() {
     const bar = el("div", { class: "filter-bar" });
-    const fields = [
+
+    const textFields = [
       ["ref", "Ref"],
       ["elem", "Elem#"],
       ["name", "Element Name"],
-      ["required", "Req"],
-      ["type", "Type"],
-      ["code", "Code"],
     ];
-    for (const [key, label] of fields) {
+    for (const [key, label] of textFields) {
       const wrap = el("label", { class: "inline" }, [el("span", { text: `${label}:` })]);
       const input = el("input", { type: "text", value: elementFilters[key], placeholder: "filter…" });
       input.addEventListener("input", () => {
@@ -292,6 +298,28 @@
       wrap.appendChild(input);
       bar.appendChild(wrap);
     }
+
+    const dropdownFields = [
+      ["required", "Req", (r) => r.requirement],
+      ["type", "Type", (r) => r.data_type],
+      ["usage", "Usage", (r) => r.usage],
+      ["code", "Code", (r) => r.code],
+    ];
+    for (const [key, label, getter] of dropdownFields) {
+      const wrap = el("label", { class: "inline" }, [el("span", { text: `${label}:` })]);
+      const select = el("select", {}, [
+        el("option", { value: "", text: "All" }),
+        ...distinctValues(getter).map((v) => el("option", { value: v, text: v })),
+      ]);
+      select.value = elementFilters[key];
+      select.addEventListener("change", () => {
+        elementFilters[key] = select.value;
+        renderResults();
+      });
+      wrap.appendChild(select);
+      bar.appendChild(wrap);
+    }
+
     bar.appendChild(
       downloadControl(() => filteredElementRows(), ELEMENT_COLUMNS, "convention-elements", (r) => r.file)
     );
@@ -300,7 +328,6 @@
 
   function elementFileSection(filename, rows) {
     const wrap = el("div", { class: "convention-wrap" });
-    wrap.appendChild(el("h3", { class: "ts-id", text: filename }));
 
     const thead = el("thead", {}, [
       sortableHeaderRow(ELEMENT_COLUMNS, () => elementSort, (s) => {
@@ -314,7 +341,10 @@
       rows.map((r) => el("tr", {}, ELEMENT_COLUMNS.map((col) => el("td", { text: String(col.get(r) ?? "") }))))
     );
     const table = el("table", { class: "convention-table" }, [thead, tbody]);
-    wrap.appendChild(el("div", { class: "convention-table-wrap" }, [table]));
+    const summary = el("summary", { class: "ts-id", text: `${filename} (${rows.length} rows)` });
+    wrap.appendChild(
+      el("details", { open: "" }, [summary, el("div", { class: "convention-table-wrap" }, [table])])
+    );
     return wrap;
   }
 

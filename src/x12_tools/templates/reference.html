@@ -48,20 +48,22 @@
       <label class="inline"><input type="checkbox" id="seg-group-by-letter"> <span>Roll up by first letter</span></label>
       <span id="seg-download"></span>
     </div>
-    <p class="hint" id="seg-count-line"></p>
-    <div class="convention-table-wrap">
-      <table class="convention-table" id="seg-table">
-        <thead>
-          <tr>
-            <th class="sortable" data-key="segment">Segment</th>
-            <th class="sortable" data-key="name">Name</th>
-            <th class="sortable" data-key="release">Release</th>
-            <th class="sortable" data-key="has_elements">Has elements</th>
-          </tr>
-        </thead>
-        <tbody id="seg-tbody"></tbody>
-      </table>
-    </div>
+    <details open>
+      <summary class="hint" id="seg-count-line"></summary>
+      <div class="convention-table-wrap">
+        <table class="convention-table" id="seg-table">
+          <thead>
+            <tr>
+              <th class="sortable" data-key="segment">Segment</th>
+              <th class="sortable" data-key="name">Name</th>
+              <th class="sortable" data-key="release">Release</th>
+              <th class="sortable" data-key="has_elements">Has elements</th>
+            </tr>
+          </thead>
+          <tbody id="seg-tbody"></tbody>
+        </table>
+      </div>
+    </details>
   </div>
 
   <div class="panel">
@@ -83,24 +85,26 @@
       <label class="inline"><input type="checkbox" id="el-group-by-segment" checked> <span>Roll up by segment</span></label>
       <span id="el-download"></span>
     </div>
-    <p class="hint" id="el-count-line"></p>
-    <div class="convention-table-wrap">
-      <table class="convention-table" id="el-table">
-        <thead>
-          <tr>
-            <th class="sortable" data-key="ref">Ref</th>
-            <th class="sortable" data-key="name">Name</th>
-            <th class="sortable" data-key="requirement">Req</th>
-            <th class="sortable" data-key="data_type">Type</th>
-            <th class="sortable" data-key="min_length">Min</th>
-            <th class="sortable" data-key="max_length">Max</th>
-            <th class="sortable" data-key="release">Release</th>
-            <th class="sortable" data-key="source">Source</th>
-          </tr>
-        </thead>
-        <tbody id="el-tbody"></tbody>
-      </table>
-    </div>
+    <details open>
+      <summary class="hint" id="el-count-line"></summary>
+      <div class="convention-table-wrap">
+        <table class="convention-table" id="el-table">
+          <thead>
+            <tr>
+              <th class="sortable" data-key="ref">Ref</th>
+              <th class="sortable" data-key="name">Name</th>
+              <th class="sortable" data-key="requirement">Req</th>
+              <th class="sortable" data-key="data_type">Type</th>
+              <th class="sortable" data-key="min_length">Min</th>
+              <th class="sortable" data-key="max_length">Max</th>
+              <th class="sortable" data-key="release">Release</th>
+              <th class="sortable" data-key="source">Source</th>
+            </tr>
+          </thead>
+          <tbody id="el-tbody"></tbody>
+        </table>
+      </div>
+    </details>
   </div>
 </main>
 

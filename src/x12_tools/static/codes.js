@@ -174,9 +174,14 @@
     const thead = el("thead", {}, [headRow]);
     const tbody = el("tbody", {});
     const table = el("table", { class: "convention-table" }, [thead, tbody]);
-    const countLine = el("p", { class: "hint" });
-    wrap.appendChild(countLine);
-    wrap.appendChild(el("div", { class: "convention-table-wrap" }, [table]));
+    // The row count doubles as the <summary> -- clicking it rolls the table
+    // up/down, same as the rest of the app's collapsible sections.
+    const summary = el("summary", { class: "hint" });
+    const details = el("details", { open: "" }, [
+      summary,
+      el("div", { class: "convention-table-wrap" }, [table]),
+    ]);
+    wrap.appendChild(details);
 
     function currentRows() {
       let rows = fileOrder.filter(({ o }) => {
@@ -200,7 +205,7 @@
 
     function renderBody() {
       const rows = currentRows();
-      countLine.textContent = sort
+      summary.textContent = sort
         ? `Showing ${rows.length} of ${occurrences.length} rows, sorted by ${sort.key} (${sort.dir > 0 ? "asc" : "desc"}).`
         : `Showing ${rows.length} of ${occurrences.length} rows, in file order.`;
       tbody.innerHTML = "";
