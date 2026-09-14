@@ -10,6 +10,8 @@
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --fatal: #b3261e;
+  --highlight-bg: #fff2a8;
+  --highlight-text: #1c1c1a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,6 +24,8 @@
     --accent: #4fb99f;
     --accent-text: #0b1210;
     --fatal: #ff8a80;
+    --highlight-bg: #6b5c15;
+    --highlight-text: #fff2a8;
   }
 }
 
@@ -103,6 +107,19 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   font: inherit; width: 100%; border: none; background: transparent; color: var(--text);
 }
 .convention-table-wrap { overflow-x: auto; }
+
+.raw-segment { white-space: pre; }
+.raw-segment + .raw-segment { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); }
+.raw-segment mark { background: var(--highlight-bg); color: var(--highlight-text); border-radius: 3px; padding: 0 2px; }
+
+.filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-block: 10px; }
+.filter-bar .inline { gap: 4px; }
+.filter-bar select, .filter-bar input[type=text] {
+  font: inherit; font-size: 0.85rem; padding: 4px 8px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--panel); color: var(--text);
+}
+.filter-bar input[type=text] { width: 12ch; }
+.convention-table tr.loop-group-row td { background: var(--bg); font-weight: 600; font-family: var(--mono); }
 
 .panel details { border-top: 1px solid var(--border); padding-block: 10px; }
 .panel details:first-of-type { border-top: none; }

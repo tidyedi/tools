@@ -82,6 +82,7 @@ class ConventionSegmentRow:
     """One row of the segment table -- envelope or transaction-set content,
     exactly as the convention lists it (including repeats across loops)."""
 
+    level: str  # "Heading" / "Detail" / "Summary" -- which table this row is in
     pos: str
     loop_id: str | None
     segment_id: str
@@ -95,6 +96,7 @@ class ConventionSegmentRow:
 
     def as_dict(self) -> dict[str, Any]:
         return {
+            "level": self.level,
             "pos": self.pos,
             "loop_id": self.loop_id,
             "segment_id": self.segment_id,
@@ -246,10 +248,16 @@ def _parse_segment_table(lines: list[str]) -> list[ConventionSegmentRow]:
     current: ConventionSegmentRow | None = None
     current_dict: dict[str, Any] | None = None
     loop_id: str | None = None
+    level = ""
 
     for raw in section:
         stripped = raw.strip()
-        if not stripped or stripped in ("Heading:", "Detail:", "Summary:"):
+        if stripped in ("Heading:", "Detail:", "Summary:"):
+            level = stripped.rstrip(":")
+            loop_id = None
+            current, current_dict = None, None
+            continue
+        if not stripped:
             continue
         if stripped.startswith("Pos") and "Id" in stripped:
             continue
@@ -267,6 +275,7 @@ def _parse_segment_table(lines: list[str]) -> list[ConventionSegmentRow]:
             repeat = cols[4] if len(cols) > 6 else ""
             notes = cols[5] if len(cols) > 6 else (cols[4] if len(cols) == 6 else "")
             current_dict = {
+                "level": level,
                 "pos": pos,
                 "loop_id": loop_id,
                 "segment_id": cols[0],

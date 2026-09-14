@@ -13,10 +13,12 @@
   <div class="wrap">
     <h1>Convention importer</h1>
     <p class="tagline">
-      Upload a DLA/DLMS-style implementation convention PDF. It's parsed --
-      not stored -- into its segment table (Pos/Id/Name/Req/Max Use/Repeat/
-      Notes/Usage) and, per segment, every element's definition and code
-      meanings, straight from the document that defines them.
+      Upload one or more DLA/DLMS-style implementation convention PDFs.
+      They're parsed -- not stored -- into one combined segment table
+      (Level/File/Pos/Loop/*/Id/Name/Req/Max Use/Repeat/Notes/Usage) and one
+      combined element table (every segment's Ref/Elem#/Name/Req/Type/
+      Min-Max/Usage/Code/Code Name), straight from the documents that define
+      them.
     </p>
   </div>
 </header>
@@ -35,16 +37,16 @@
   </p>
 
   <form id="convention-form">
-    <label for="pdf-file" class="field-label">Convention PDF</label>
+    <label for="pdf-file" class="field-label">Convention PDF(s)</label>
     <div class="controls">
       <label class="inline file-pick">
-        <input type="file" id="pdf-file" accept="application/pdf,.pdf" required>
-        <span>Choose a PDF…</span>
+        <input type="file" id="pdf-file" accept="application/pdf,.pdf" multiple required>
+        <span>Choose PDF(s)…</span>
       </label>
-      <button type="submit" id="submit-btn" class="primary">Parse convention</button>
+      <button type="submit" id="submit-btn" class="primary">Parse convention(s)</button>
       <button type="button" id="clear-btn" class="ghost">Clear</button>
     </div>
-    <p class="hint">Up to {{ "{:,}".format(max_pdf_bytes) }} bytes.</p>
+    <p class="hint">Up to {{ "{:,}".format(max_pdf_bytes) }} bytes per file.</p>
     <p id="form-error" class="form-error" hidden></p>
   </form>
 

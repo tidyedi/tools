@@ -60,7 +60,7 @@ TOOLS: list[dict[str, str]] = [
         "title": "Code inventory",
         "blurb": (
             "Paste an EDI interchange, cleanse it, and get every distinct value "
-            "seen in each coded element (N101, REF01, and similar) -- a starting "
+            "seen in each element (N101, REF01, BEG03, and similar) -- a starting "
             "point for spotting codes your convention doesn't cover yet."
         ),
     },
@@ -217,23 +217,34 @@ def create_app() -> FastAPI:
         return JSONResponse({"interchange_count": len(interchanges), "interchanges": interchanges})
 
     @app.post("/api/convention")
-    async def api_convention(file: UploadFile = File(...)) -> JSONResponse:  # noqa: B008 (FastAPI idiom)
-        if not (file.filename or "").lower().endswith(".pdf"):
-            return JSONResponse({"detail": "Please upload a PDF file."}, status_code=422)
-        data = await file.read()
-        if not data:
-            return JSONResponse({"detail": "The uploaded file is empty."}, status_code=422)
-        if len(data) > MAX_PDF_BYTES:
-            return JSONResponse(
-                {"detail": f"File exceeds the {MAX_PDF_BYTES:,}-byte limit."}, status_code=422
-            )
-        try:
-            result = parse_convention_pdf(data)
-        except PdftotextMissing as exc:
-            return JSONResponse({"detail": str(exc)}, status_code=503)
-        except ValueError as exc:
-            return JSONResponse({"detail": str(exc)}, status_code=422)
-        return JSONResponse(result.as_dict())
+    async def api_convention(files: list[UploadFile] = File(...)) -> JSONResponse:  # noqa: B008
+        # Each file is parsed independently and tagged with its own filename
+        # in the response, so the page can combine several conventions into
+        # one segment table / element table while still telling rows apart
+        # by source file.
+        results: list[dict[str, Any]] = []
+        for file in files:
+            filename = file.filename or "unnamed.pdf"
+            if not filename.lower().endswith(".pdf"):
+                return JSONResponse(
+                    {"detail": f"{filename}: please upload a PDF file."}, status_code=422
+                )
+            data = await file.read()
+            if not data:
+                return JSONResponse({"detail": f"{filename}: the file is empty."}, status_code=422)
+            if len(data) > MAX_PDF_BYTES:
+                return JSONResponse(
+                    {"detail": f"{filename}: exceeds the {MAX_PDF_BYTES:,}-byte limit."},
+                    status_code=422,
+                )
+            try:
+                parsed = parse_convention_pdf(data)
+            except PdftotextMissing as exc:
+                return JSONResponse({"detail": str(exc)}, status_code=503)
+            except ValueError as exc:
+                return JSONResponse({"detail": f"{filename}: {exc}"}, status_code=422)
+            results.append({"filename": filename, **parsed.as_dict()})
+        return JSONResponse({"results": results})
 
     return app
 

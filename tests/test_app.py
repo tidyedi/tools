@@ -123,12 +123,12 @@ def test_convention_page_loads() -> None:
 
 
 def test_api_convention_rejects_non_pdf_filename() -> None:
-    response = client.post("/api/convention", files={"file": ("notes.txt", b"hello", "text/plain")})
+    response = client.post("/api/convention", files={"files": ("notes.txt", b"hello", "text/plain")})
     assert response.status_code == 422
 
 
 def test_api_convention_rejects_empty_file() -> None:
-    response = client.post("/api/convention", files={"file": ("empty.pdf", b"", "application/pdf")})
+    response = client.post("/api/convention", files={"files": ("empty.pdf", b"", "application/pdf")})
     assert response.status_code == 422
 
 
@@ -138,16 +138,45 @@ def test_api_convention_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
 
     canned = ParsedConvention(
         segment_table=[
-            ConventionSegmentRow("10", None, "ST", "Transaction Set Header", "M", "1", "", "", "Must use", False)
+            ConventionSegmentRow(
+                "Heading", "10", None, "ST", "Transaction Set Header", "M", "1", "", "", "Must use", False
+            )
         ],
         segment_details={},
     )
     monkeypatch.setattr(app_module, "parse_convention_pdf", lambda data: canned)
 
-    response = client.post("/api/convention", files={"file": ("ic.pdf", b"%PDF-fake", "application/pdf")})
+    response = client.post("/api/convention", files={"files": ("ic.pdf", b"%PDF-fake", "application/pdf")})
     assert response.status_code == 200
     data = response.json()
-    assert data["segment_table"][0]["segment_id"] == "ST"
+    assert data["results"][0]["filename"] == "ic.pdf"
+    assert data["results"][0]["segment_table"][0]["segment_id"] == "ST"
+
+
+def test_api_convention_combines_multiple_files(monkeypatch: pytest.MonkeyPatch) -> None:
+    from x12_tools import app as app_module
+    from x12_tools.convention_pdf import ConventionSegmentRow, ParsedConvention
+
+    canned = ParsedConvention(
+        segment_table=[
+            ConventionSegmentRow(
+                "Heading", "10", None, "ST", "Transaction Set Header", "M", "1", "", "", "Must use", False
+            )
+        ],
+        segment_details={},
+    )
+    monkeypatch.setattr(app_module, "parse_convention_pdf", lambda data: canned)
+
+    response = client.post(
+        "/api/convention",
+        files=[
+            ("files", ("a.pdf", b"%PDF-fake-a", "application/pdf")),
+            ("files", ("b.pdf", b"%PDF-fake-b", "application/pdf")),
+        ],
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert [r["filename"] for r in data["results"]] == ["a.pdf", "b.pdf"]
 
 
 def test_api_convention_reports_missing_pdftotext(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -159,6 +188,6 @@ def test_api_convention_reports_missing_pdftotext(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(app_module, "parse_convention_pdf", raise_missing)
 
-    response = client.post("/api/convention", files={"file": ("ic.pdf", b"%PDF-fake", "application/pdf")})
+    response = client.post("/api/convention", files={"files": ("ic.pdf", b"%PDF-fake", "application/pdf")})
     assert response.status_code == 503
     assert "poppler" in response.json()["detail"]
