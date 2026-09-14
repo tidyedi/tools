@@ -1,0 +1,12 @@
+# Render Blueprint. Connect the repo at https://dashboard.render.com and pick
+# "Blueprint". Paid "starter" plan: always-on, no free-tier spin-down. Billing
+# (card on file) is set up in the Render dashboard, not here.
+services:
+  - type: web
+    name: x12-tools
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    # The Dockerfile CMD honours $PORT, which Render sets.

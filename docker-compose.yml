@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+services:
+  web:
+    build: .
+    image: x12-tools
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # The Convention importer writes the uploaded PDF to a NamedTemporaryFile
+    # (in /tmp) before handing it to pdftotext -- needs to stay writable even
+    # though the rest of the root filesystem is read-only.
+    tmpfs:
+      - /tmp
