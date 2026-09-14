@@ -29,22 +29,21 @@
     <h2>Element definitions ({{ segment_elements | length }} segments)</h2>
     <p class="hint">
       Every element x12-tools knows the name, requirement, data type, and
-      length of -- what the Code inventory tool scans for (the ID-type rows)
-      and what a convention table's Segment name column pre-fills from.
+      length of -- what the Code inventory tool scans for and what a
+      convention table's Segment name column pre-fills from.
     </p>
     <div class="convention-table-wrap">
       <table class="convention-table">
         <thead>
           <tr>
-            <th>Segment</th><th>Pos</th><th>Name</th><th>Req</th><th>Type</th><th>Min</th><th>Max</th>
+            <th>Ref</th><th>Name</th><th>Req</th><th>Type</th><th>Min</th><th>Max</th>
           </tr>
         </thead>
         <tbody>
           {% for segment_id, elements in segment_elements.items() %}
           {% for e in elements %}
           <tr>
-            <td class="mono">{{ segment_id }}</td>
-            <td class="mono">{{ e.position }}</td>
+            <td class="mono">{{ segment_id }}{{ "%02d"|format(e.position) }}</td>
             <td>{{ e.name }}</td>
             <td class="mono">{{ e.requirement }}</td>
             <td class="mono">{{ e.data_type }}</td>
