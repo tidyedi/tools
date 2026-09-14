@@ -22,10 +22,17 @@
 <main class="wrap">
   <div class="tool-grid">
     {% for tool in tools %}
+    {% if tool.url %}
+    <a class="tool-card" href="{{ tool.url }}" target="_blank" rel="noopener">
+      <h2>{{ tool.title }} <span class="external-mark" aria-hidden="true">&#8599;</span></h2>
+      <p>{{ tool.blurb }}</p>
+    </a>
+    {% else %}
     <a class="tool-card" href="/{{ tool.slug }}">
       <h2>{{ tool.title }}</h2>
       <p>{{ tool.blurb }}</p>
     </a>
+    {% endif %}
     {% endfor %}
   </div>
 </main>

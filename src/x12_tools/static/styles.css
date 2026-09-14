@@ -61,6 +61,7 @@ main { padding-block: 16px 48px; }
 .tool-card h2 { margin: 0 0 8px; font-size: 1.1rem; }
 .tool-card p { margin: 0; color: var(--text-dim); font-size: 0.92rem; }
 .tool-card:hover { border-color: var(--accent); }
+.tool-card .external-mark { color: var(--text-dim); font-size: 0.85em; font-weight: 400; }
 
 .privacy { color: var(--text-dim); font-size: 0.9rem; }
 

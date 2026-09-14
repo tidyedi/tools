@@ -87,6 +87,18 @@ TOOLS: list[dict[str, str]] = [
             "and sortable, so you can check coverage before pasting a file."
         ),
     },
+    {
+        "slug": "x12-tidy-web",
+        "title": "EDI Repair",
+        "url": "https://repair.tidyedi.com/",
+        "blurb": (
+            "A sibling tool, not part of this repo: paste a malformed X12 "
+            "interchange and get back a conformant copy plus a per-pass "
+            "report of every fix -- locate the ISA, recover delimiters, pad "
+            "short elements, rebuild the envelope. Same privacy stance, "
+            "nothing stored."
+        ),
+    },
 ]
 
 
