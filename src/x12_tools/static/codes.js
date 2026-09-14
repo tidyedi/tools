@@ -99,7 +99,29 @@
     return `${release}.${ts.transaction_set_id}.${sender}-${receiver}.${date}`;
   }
 
-  function codeTable(ts, facts) {
+  // One raw segment's tokens (segment ID first, then every data element),
+  // rendered with the token at `position` (1-based, matching X12's own
+  // element numbering, so it lines up with tokens[position]) wrapped in
+  // <mark> -- lets a reviewer see exactly where a "values found" entry came
+  // from on the wire.
+  function rawSegmentLine(tokens, position, separator) {
+    const line = el("div", { class: "raw-segment" });
+    tokens.forEach((tok, i) => {
+      if (i > 0) line.appendChild(document.createTextNode(separator));
+      line.appendChild(i === position ? el("mark", { text: tok }) : document.createTextNode(tok));
+    });
+    return line;
+  }
+
+  function rawSegmentsCell(c, separator) {
+    const cell = el("td", { class: "mono" });
+    for (const tokens of c.raw_segments) {
+      cell.appendChild(rawSegmentLine(tokens, c.position, separator));
+    }
+    return cell;
+  }
+
+  function codeTable(ts, facts, separator) {
     const id = tsListId(ts, facts);
     const wrap = el("div", { class: "convention-wrap" });
     wrap.appendChild(el("h3", { class: "ts-id", text: id }));
@@ -114,7 +136,7 @@
       return wrap;
     }
 
-    const headers = ["Segment", "Pos", "Name", "Req", "Min", "Max", "Values found"];
+    const headers = ["Segment", "Pos", "Name", "Req", "Min", "Max", "Values found", "Raw segment"];
     const thead = el("thead", {}, [el("tr", {}, headers.map((label) => el("th", { text: label })))]);
     const rows = ts.codes.map((c) =>
       el("tr", {}, [
@@ -125,6 +147,7 @@
         el("td", { text: String(c.min_length), class: "mono" }),
         el("td", { text: String(c.max_length), class: "mono" }),
         el("td", { text: c.values.join(", ") }),
+        rawSegmentsCell(c, separator),
       ])
     );
     const table = el("table", { class: "convention-table" }, [thead, el("tbody", {}, rows)]);
@@ -162,7 +185,7 @@
     }
 
     for (const ts of entry.inventory.transaction_sets) {
-      panel.appendChild(codeTable(ts, entry.facts));
+      panel.appendChild(codeTable(ts, entry.facts, entry.inventory.separator));
     }
     return panel;
   }

@@ -49,9 +49,11 @@ def test_distinct_values_across_occurrences_are_merged_in_first_seen_order() -> 
     assert codes[("BEG", 2)] == ["NE"]
 
 
-def test_segment_not_in_id_elements_reference_yields_no_codes() -> None:
-    # CTT has no ID-type elements in element_definitions.py -- it shouldn't show up
-    # in the code inventory at all, even though it's a real segment.
+def test_non_id_elements_are_included_too() -> None:
+    # CTT has no ID-type elements in element_definitions.py, but it is
+    # defined there -- its non-ID elements (CTT01, a count) should still
+    # show up. Only segments/positions missing from element_definitions.py
+    # entirely are skipped.
     edi = (
         "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *"
         "240101*1200*U*00401*000000007*0*P*:~"
@@ -64,7 +66,45 @@ def test_segment_not_in_id_elements_reference_yields_no_codes() -> None:
     inventory = build_code_inventory(result.payload)
 
     codes = _codes(inventory.transaction_sets[0].codes)
-    assert not any(sid == "CTT" for sid, _pos in codes)
+    assert codes[("CTT", 1)] == ["1"]
+
+
+def test_envelope_trailer_sorts_after_the_transaction_sets_own_segments() -> None:
+    # GE/IEA close the interchange on the wire, after SE -- the merged list
+    # must keep that order (ISA, GS, ..., SE, GE, IEA), not lump every
+    # envelope segment together up front just because ISA/GS were seen
+    # first in the file.
+    edi = (
+        "ISA*00*          *00*          *ZZ*SENDER         *ZZ*RECEIVER       *"
+        "240101*1200*U*00401*000000008*0*P*:~"
+        "GS*PO*SENDERGS*RECEIVERID*20240101*1200*1*X*004010~"
+        "ST*850*0001~BEG*00*NE*PO0001**20240101~SE*3*0001~"
+        "GE*1*1~IEA*1*000000008~"
+    )
+    result = cleanse(edi)[0]
+    assert result.payload is not None
+    inventory = build_code_inventory(result.payload)
+
+    order = [c.segment_id for c in inventory.transaction_sets[0].codes]
+    assert order.index("SE") < order.index("GE") < order.index("IEA")
+    assert order.index("BEG") < order.index("SE")
+
+
+def test_raw_segments_carry_one_occurrence_per_distinct_value(two_orders_edi: str) -> None:
+    result = cleanse(two_orders_edi)[0]
+    assert result.payload is not None
+    inventory = build_code_inventory(result.payload)
+
+    assert inventory.separator == "*"
+    by_key = {(c.segment_id, c.position): c for c in inventory.transaction_sets[0].codes}
+    gs01 = by_key[("GS", 1)]
+    assert len(gs01.raw_segments) == len(gs01.values) == 1
+    # The raw segment is the decoded, un-split GS occurrence -- segment ID
+    # first, then every data element -- so the value at this position lines
+    # up with the element at the same index.
+    raw = gs01.raw_segments[0]
+    assert raw[0] == "GS"
+    assert raw[1] == gs01.values[0]
 
 
 def test_unrecoverable_input_yields_empty_inventory() -> None:

@@ -15,7 +15,7 @@
     <p class="tagline">
       Paste an EDI interchange. It's cleansed with
       <a href="https://github.com/tidyedi/x12-tidy">x12-tidy</a> first, then
-      every coded element (N101, REF01, and similar -- see
+      every element (N101, REF01, BEG03, and every other position -- see
       <a href="https://github.com/tidyedi/tools/blob/main/src/x12_tools/element_definitions.py">element_definitions.py</a>
       for what's covered) is scanned for the distinct values it actually
       carries -- a starting point for spotting codes your convention doesn't

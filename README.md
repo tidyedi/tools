@@ -12,8 +12,8 @@ front end, no account, nothing you paste is stored, logged, or sent anywhere.
   element/populated counts, and a Segment name/Requirement/Notes you fill in
   — grouped by transaction set type, occurrences merged into one list.
 - **Code inventory** (`/codes`) — same cleanse, but lists every distinct
-  value seen in each coded (ID-type) element (N101, REF01, and similar),
-  alongside that element's definition from `element_definitions.py`.
+  value seen in each element (N101, REF01, BEG03, and similar), alongside
+  that element's definition from `element_definitions.py`.
 - **Convention importer** (`/convention`) — upload a DLA/DLMS-style
   implementation convention PDF and get its segment table plus every
   element's definition and code meanings, parsed straight out of the
