@@ -112,57 +112,30 @@
     return `${release}.${edi}.${sender}-${receiver}.${date}`;
   }
 
-  const REQUIREMENT_OPTIONS = [
-    { value: "", label: "—" },
-    { value: "M", label: "M — Mandatory" },
-    { value: "O", label: "O — Optional" },
-    { value: "C", label: "C — Conditional" },
-  ];
-
-  // The six envelope segments are mandatory in every X12 interchange by the
-  // standard itself -- not a per-convention choice -- so their Requirement
-  // cell is fixed at "M", not an editable dropdown at all.
-  const ALWAYS_MANDATORY = new Set(["ISA", "GS", "ST", "SE", "GE", "IEA"]);
-
-  function requirementCell(segmentId) {
-    if (ALWAYS_MANDATORY.has(segmentId)) return el("td", { text: "M", class: "mono" });
-    const select = el(
-      "select",
-      { class: "editable-select" },
-      REQUIREMENT_OPTIONS.map((opt) => el("option", { value: opt.value, text: opt.label }))
-    );
-    return el("td", {}, [select]);
-  }
-
   // One transaction set type's segment list as an editable convention table:
   // Segment, Elements and Used come from the EDI (read-only); Segment name is
-  // pre-filled from a local X12 reference when known (editable); Requirement
-  // is fixed at Mandatory for the six envelope segments and an editable
-  // dropdown for everything else; Notes starts blank. "Copy table" reads the
-  // table's current state (including your edits) as tab-separated text,
-  // ready to paste into a spreadsheet -- the identifier is repeated on every
-  // row so a pasted table still says which convention it's for.
+  // pre-filled from a local X12 reference when known (editable). "Copy table"
+  // reads the table's current state (including your edits) as tab-separated
+  // text, ready to paste into a spreadsheet -- the identifier is repeated on
+  // every row so a pasted table still says which convention it's for.
   function conventionTable(ts, facts) {
     const id = tsListId(ts, facts);
     const wrap = el("div", { class: "convention-wrap" });
     wrap.appendChild(el("h3", { class: "ts-id", text: id }));
 
-    const headerCells = ["Segment", "Elements", "Used", "Segment name", "Requirement", "Notes"].map(
-      (label) => el("th", { text: label })
+    const headerCells = ["Segment", "Elements", "Used", "Segment name"].map((label) =>
+      el("th", { text: label })
     );
     const thead = el("thead", {}, [el("tr", {}, headerCells)]);
 
     const rows = ts.segments.map((seg) => {
       const nameCell = el("td", { contenteditable: "true", class: "editable" });
       nameCell.textContent = SEGMENT_NAMES[seg.segment_id] || "";
-      const notesCell = el("td", { contenteditable: "true", class: "editable" });
       return el("tr", {}, [
         el("td", { text: seg.segment_id, class: "mono" }),
         el("td", { text: String(seg.element_count), class: "mono" }),
         el("td", { text: String(seg.populated_count), class: "mono" }),
         nameCell,
-        requirementCell(seg.segment_id),
-        notesCell,
       ]);
     });
     const tbody = el("tbody", {}, rows);
@@ -174,11 +147,10 @@
   }
 
   function cellValue(td) {
-    const select = td.querySelector("select");
-    return select ? select.value : td.textContent.trim();
+    return td.textContent.trim();
   }
 
-  const TABLE_HEADER = ["Identifier", "Segment", "Elements", "Used", "Segment name", "Requirement", "Notes"];
+  const TABLE_HEADER = ["Identifier", "Segment", "Elements", "Used", "Segment name"];
 
   // The table's current state (including edits) as rows of plain strings,
   // header first -- the one source both export formats read from.

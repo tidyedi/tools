@@ -113,9 +113,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .convention-table td.mono { font-family: var(--mono); white-space: nowrap; }
 .convention-table td.editable { min-width: 8ch; cursor: text; }
 .convention-table td.editable:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
-.convention-table select.editable-select {
-  font: inherit; width: 100%; border: none; background: transparent; color: var(--text);
-}
 .convention-table-wrap { overflow-x: auto; }
 
 .raw-segment { white-space: pre; }
