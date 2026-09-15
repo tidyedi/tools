@@ -16,7 +16,7 @@
   const samplesDataEl = document.getElementById("samples-data");
   const SAMPLES = samplesDataEl ? JSON.parse(samplesDataEl.textContent) : [];
 
-  const { el, downloadControl } = window.tableTools;
+  const { el, downloadControl, HIGHLIGHT_MARKER } = window.tableTools;
 
   fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
@@ -152,7 +152,16 @@
 
     const exportColumns = [
       ...COLUMNS,
-      { key: "raw_segment", label: "Raw segment", get: (o) => o.raw_segment.join(separator) },
+      {
+        key: "raw_segment",
+        label: "Raw segment",
+        // Wraps the one token at this row's position so the .xlsx export
+        // can render it bold+colored, matching the on-screen <mark>.
+        get: (o) =>
+          o.raw_segment
+            .map((tok, i) => (i === o.position ? `${HIGHLIGHT_MARKER}${tok}${HIGHLIGHT_MARKER}` : tok))
+            .join(separator),
+      },
     ];
     const downloadPicker = downloadControl(() => currentRows(), exportColumns, "code-inventory");
     filterBar.appendChild(downloadPicker);

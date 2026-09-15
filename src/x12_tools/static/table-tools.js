@@ -4,6 +4,12 @@
 window.tableTools = (function () {
   "use strict";
 
+  // A column's `get()` can wrap a substring in this pair to mark it for
+  // bold+color rendering in the .xlsx export (xlsx_export.py looks for the
+  // same character) -- e.g. the one highlighted token in a raw segment
+  // string. Every other format strips it and keeps just the plain text.
+  const HIGHLIGHT_MARKER = "\u0001";
+
   function el(tag, attrs, children) {
     const node = document.createElement(tag);
     for (const [key, value] of Object.entries(attrs || {})) {
@@ -53,6 +59,18 @@ window.tableTools = (function () {
     });
   }
 
+  // Every non-.xlsx format writes plain text -- strip the highlight
+  // sentinel rather than leak a raw control character into the file.
+  function stripMarkers(records) {
+    return records.map((r) => {
+      const clean = {};
+      for (const [k, v] of Object.entries(r)) {
+        clean[k] = typeof v === "string" ? v.split(HIGHLIGHT_MARKER).join("") : v;
+      }
+      return clean;
+    });
+  }
+
   function triggerBlobDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = el("a", { href: url, download: filename });
@@ -83,21 +101,22 @@ window.tableTools = (function () {
       await downloadXlsx(records, baseName);
       return;
     }
+    const clean = stripMarkers(records);
     let content, mime, ext;
     if (format === "json") {
-      content = JSON.stringify(records, null, 2);
+      content = JSON.stringify(clean, null, 2);
       mime = "application/json";
       ext = "json";
     } else if (format === "pipe") {
-      content = toDelimited(records, "|");
+      content = toDelimited(clean, "|");
       mime = "text/plain";
       ext = "txt";
     } else if (format === "html") {
-      content = toHtmlTable(records);
+      content = toHtmlTable(clean);
       mime = "text/html";
       ext = "html";
     } else {
-      content = toDelimited(records, ",");
+      content = toDelimited(clean, ",");
       mime = "text/csv";
       ext = "csv";
     }
@@ -142,5 +161,14 @@ window.tableTools = (function () {
     return wrap;
   }
 
-  return { el, csvEscape, toDelimited, toHtmlTable, toRecords, downloadRows, downloadControl };
+  return {
+    el,
+    csvEscape,
+    toDelimited,
+    toHtmlTable,
+    toRecords,
+    downloadRows,
+    downloadControl,
+    HIGHLIGHT_MARKER,
+  };
 })();
