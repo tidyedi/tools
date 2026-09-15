@@ -13,15 +13,24 @@ Routes:
 * ``GET  /convention``    -- the convention-PDF importer tool page.
 * ``POST /api/convention``-- parse an uploaded DLA/DLMS convention PDF into a segment table and per-segment element/code detail.
 * ``POST /api/export/xlsx``-- turn a table's current (filtered/sorted) rows into a real .xlsx workbook.
+* ``GET  /tools/owner``   -- a second hub page for owner-only tools (see OWNER_TOOLS below). Not linked from anywhere public; reachable only by knowing the URL.
 * ``GET  /healthz``       -- liveness probe.
 
 Nothing submitted is stored, logged, or persisted -- each request is cleansed
 and inventoried in memory and forgotten once the response is sent, the same
 privacy stance as x12-tidy-web.
+
+/tools/owner is security by obscurity, not authentication: it isn't linked
+from the public hub or nav, and every response under /tools/owner/* carries
+an X-Robots-Tag: noindex header so it won't get crawled or indexed, but
+anyone who has the URL (or finds it in a server log, browser history, or a
+Referer header) can use it. Don't put anything behind it that would be a
+real problem if it leaked.
 """
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -101,6 +110,13 @@ TOOLS: list[dict[str, str]] = [
     },
 ]
 
+#: Owner-only tools, shown at /tools/owner instead of on the public hub.
+#: Same shape as TOOLS (slug/title/blurb, or url for an external link). Give
+#: each entry's own page a route under /tools/owner/<slug> -- the
+#: noindex-header middleware below already covers anything under that
+#: prefix, so a new page doesn't need any extra privacy plumbing of its own.
+OWNER_TOOLS: list[dict[str, str]] = []
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -110,6 +126,15 @@ def create_app() -> FastAPI:
     )
 
     app.mount("/static", StaticFiles(directory=str(_HERE / "static")), name="static")
+
+    @app.middleware("http")
+    async def _noindex_owner_tools(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        response = await call_next(request)
+        if request.url.path.startswith("/tools/owner"):
+            response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
 
     @app.exception_handler(RequestValidationError)
     def _validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -205,6 +230,26 @@ def create_app() -> FastAPI:
             request,
             "convention.html",
             {"app_version": __version__, "max_pdf_bytes": MAX_PDF_BYTES, "current": "convention"},
+        )
+
+    @app.get("/tools/owner", response_class=HTMLResponse)
+    def owner_hub(request: Request) -> HTMLResponse:
+        # Reuses the public hub template with an extended tool list and a
+        # note in the tagline -- see OWNER_TOOLS above for how to add tools.
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "index.html",
+            {
+                "app_version": __version__,
+                "tools": TOOLS + OWNER_TOOLS,
+                "current": None,
+                "page_title": "X12 Tools — owner",
+                "heading": "X12 Tools (owner)",
+                "tagline": (
+                    "Small, standalone online tools for working with ANSI X12 EDI. "
+                    "This page isn't linked publicly -- keep the URL to yourself."
+                ),
+            },
         )
 
     @app.get("/healthz")
