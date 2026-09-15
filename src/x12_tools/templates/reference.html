@@ -29,12 +29,12 @@
     <h2>Segment names (<span id="segment-count">{{ segment_count }}</span> segments)</h2>
     <p class="hint">
       Every segment ID x12-tools has a name for -- pre-fills the Segment name
-      column in the convention table. <strong>Has elements</strong> shows
-      whether that segment also has a full position-by-position breakdown
-      below, in Element definitions -- "No" just means the breakdown hasn't
-      been added yet, not that the segment name is wrong. <strong>Source</strong>
-      is "X12" for every row here -- cross-checked against Stedi's public X12
-      reference (see segment_names.py's docstring).
+      column in the convention table. Sourced from Stedi's public X12
+      reference for every row here (see segment_names.py's docstring).
+      <strong>Has elements</strong> shows whether that segment also has a
+      full position-by-position breakdown below, in Element definitions --
+      click a "Yes" row to jump straight to it; "No" just means the
+      breakdown hasn't been added yet, not that the segment name is wrong.
     </p>
     <div class="filter-bar">
       <label class="inline"><span>Segment:</span> <input type="text" id="seg-filter-segment" placeholder="filter…"></label>
@@ -47,7 +47,6 @@
           <option value="no">No</option>
         </select>
       </label>
-      <label class="inline"><span>Source:</span> <input type="text" id="seg-filter-source" placeholder="filter…"></label>
       <label class="inline"><input type="checkbox" id="seg-group-by-letter"> <span>Roll up by first letter</span></label>
       <span id="seg-download"></span>
     </div>
@@ -61,7 +60,6 @@
               <th class="sortable" data-key="name">Name</th>
               <th class="sortable" data-key="release">Release</th>
               <th class="sortable" data-key="has_elements">Has elements</th>
-              <th class="sortable" data-key="source">Source</th>
             </tr>
           </thead>
           <tbody id="seg-tbody"></tbody>
@@ -70,7 +68,7 @@
     </details>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="element-definitions-panel">
     <h2>Element definitions (<span id="element-count">{{ element_segment_count }}</span> segments)</h2>
     <p class="hint">
       Every element x12-tools knows the name, requirement, data type, and
@@ -89,7 +87,7 @@
       <label class="inline"><input type="checkbox" id="el-group-by-segment" checked> <span>Roll up by segment</span></label>
       <span id="el-download"></span>
     </div>
-    <details open>
+    <details open id="el-details">
       <summary class="hint" id="el-count-line"></summary>
       <div class="convention-table-wrap">
         <table class="convention-table" id="el-table">

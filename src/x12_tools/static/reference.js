@@ -32,10 +32,23 @@
     });
   }
 
+  // Jumps from a Segment names row to that segment's rows in Element
+  // definitions below -- reuses the Ref filter (a plain substring match, so
+  // "ACK" already matches "ACK01".."ACK09") rather than a second filtering
+  // mechanism just for this.
+  function jumpToElementDefinitions(segmentId) {
+    const refInput = document.getElementById("el-filter-ref");
+    refInput.value = segmentId;
+    refInput.dispatchEvent(new Event("input"));
+    const details = document.getElementById("el-details");
+    if (details) details.open = true;
+    document.getElementById("element-definitions-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   // --- Segment names table ------------------------------------------------
 
   (function setupSegmentTable() {
-    const filters = { segment: "", name: "", has_elements: "all", source: "" };
+    const filters = { segment: "", name: "", has_elements: "all" };
     let sort = null;
     let groupByLetter = false;
 
@@ -49,10 +62,6 @@
     });
     document.getElementById("seg-filter-has-elements").addEventListener("change", (e) => {
       filters.has_elements = e.target.value;
-      render();
-    });
-    document.getElementById("seg-filter-source").addEventListener("input", (e) => {
-      filters.source = e.target.value.trim().toLowerCase();
       render();
     });
     document.getElementById("seg-group-by-letter").addEventListener("change", (e) => {
@@ -81,7 +90,6 @@
         if (filters.name && !r.name.toLowerCase().includes(filters.name)) return false;
         if (filters.has_elements === "yes" && !r.has_elements) return false;
         if (filters.has_elements === "no" && r.has_elements) return false;
-        if (filters.source && !r.source.toLowerCase().includes(filters.source)) return false;
         return true;
       });
       return applySort(rows, sort);
@@ -93,14 +101,20 @@
         `Showing ${rows.length} of ${SEGMENT_ROWS.length} segments.`;
       segTbody.innerHTML = "";
 
-      const renderRow = (r) =>
-        el("tr", {}, [
+      const renderRow = (r) => {
+        const tr = el("tr", {}, [
           el("td", { text: r.segment, class: "mono" }),
           el("td", { text: r.name }),
           el("td", { text: r.release, class: "mono" }),
           el("td", { text: r.has_elements ? "Yes" : "No" }),
-          el("td", { text: r.source }),
         ]);
+        if (r.has_elements) {
+          tr.classList.add("row-link");
+          tr.title = `Jump to ${r.segment}'s element breakdown`;
+          tr.addEventListener("click", () => jumpToElementDefinitions(r.segment));
+        }
+        return tr;
+      };
 
       if (groupByLetter) {
         const groups = new Map();
@@ -112,7 +126,7 @@
         for (const [letter, groupRows] of groups) {
           segTbody.appendChild(
             el("tr", { class: "loop-group-row" }, [
-              el("td", { text: `${letter} (${groupRows.length})`, colspan: "5" }),
+              el("td", { text: `${letter} (${groupRows.length})`, colspan: "4" }),
             ])
           );
           for (const r of groupRows) segTbody.appendChild(renderRow(r));

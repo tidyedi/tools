@@ -131,6 +131,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .filter-bar input[type=text] { width: 12ch; }
 .convention-table tr.loop-group-row td { background: var(--bg); font-weight: 600; font-family: var(--mono); }
+.convention-table tr.row-link { cursor: pointer; }
+.convention-table tr.row-link:hover td { background: var(--bg); }
 
 .panel details { border-top: 1px solid var(--border); padding-block: 10px; }
 .panel details:first-of-type { border-top: none; }
