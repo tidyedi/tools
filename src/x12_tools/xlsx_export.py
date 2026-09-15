@@ -34,9 +34,12 @@ _HIGHLIGHT_MARKER = "\x01"
 
 #: Rich text in an .xlsx cell can only vary per-character font color, not
 #: background fill, so this approximates the on-screen <mark> (amber bg,
-#: dark text -- see --highlight-bg/--highlight-text in styles.css) as bold
-#: dark amber text instead. rgb is ARGB (opaque alpha "FF" + RRGGBB).
-_HIGHLIGHT_FONT = InlineFont(b=True, color=Color(rgb="FF8A6D00"))
+#: dark text -- see --highlight-bg/--highlight-text in styles.css) as bold,
+#: underlined, vivid-orange text instead. A muted/dark color read as barely
+#: different from plain bold black at normal spreadsheet zoom, so this
+#: leans bright rather than trying to match the on-screen amber's hue
+#: exactly. rgb is ARGB (opaque alpha "FF" + RRGGBB).
+_HIGHLIGHT_FONT = InlineFont(b=True, u="single", color=Color(rgb="FFE65100"))
 
 
 def _cell_value(value: Any) -> Any:
