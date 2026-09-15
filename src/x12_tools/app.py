@@ -110,13 +110,14 @@ TOOLS: list[dict[str, str]] = [
     },
 ]
 
-#: element_source() and segment_names.py both track/derive from "Stedi" --
-#: the public reference tables show that as "X12" instead (it's Stedi's
-#: public *X12* reference, and "X12" is the more meaningful label for
-#: someone checking coverage, not "which third-party site did this pass
-#: through"). Anything not in this map is shown as element_source() returns
-#: it (currently just "x12-tools", for hand-curated definitions).
-_DISPLAY_SOURCE: dict[str, str] = {"Stedi": "X12"}
+#: element_source() returns "Stedi" (Stedi's public X12 reference) or
+#: "x12-tools" (hand-curated from DLA convention PDFs and general X12 004010
+#: knowledge -- see its docstring) -- neither is a real standards source, and
+#: "x12-tools" in particular is just this codebase's own name, not something
+#: that published the data. The public reference tables show both as "X12"
+#: instead: what a coverage-checker actually cares about is which standard
+#: a definition represents, not which internal bucket tracked how it got here.
+_DISPLAY_SOURCE: dict[str, str] = {"Stedi": "X12", "x12-tools": "X12"}
 
 #: Owner-only tools, shown at /tools/owner instead of on the public hub.
 #: Same shape as TOOLS (slug/title/blurb, or url for an external link). Give
