@@ -84,7 +84,9 @@ TOOLS: list[dict[str, str]] = [
             "Upload a DLA/DLMS-style implementation convention PDF and get its "
             "segment table plus every element's definition and code meanings, "
             "extracted straight from the document -- a starting point for "
-            "building a convention table without retyping it by hand."
+            "building a convention table without retyping it by hand. Upload "
+            "two or more at once (e.g. 315A vs 315B vs 315N) and it also shows "
+            "exactly what differs between them."
         ),
     },
     {
