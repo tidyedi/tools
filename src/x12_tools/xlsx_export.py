@@ -34,12 +34,14 @@ _HIGHLIGHT_MARKER = "\x01"
 
 #: Rich text in an .xlsx cell can only vary per-character font color, not
 #: background fill, so this approximates the on-screen <mark> (amber bg,
-#: dark text -- see --highlight-bg/--highlight-text in styles.css) as bold,
-#: underlined, vivid-orange text instead. A muted/dark color read as barely
-#: different from plain bold black at normal spreadsheet zoom, so this
-#: leans bright rather than trying to match the on-screen amber's hue
-#: exactly. rgb is ARGB (opaque alpha "FF" + RRGGBB).
-_HIGHLIGHT_FONT = InlineFont(b=True, u="single", color=Color(rgb="FFE65100"))
+#: dark text -- see --highlight-bg/--highlight-text in styles.css) with
+#: contrast instead: the matched token stays bold+underlined+full black
+#: while everything else in the cell is dimmed to gray, so the eye lands on
+#: the token the same way a bright background would, without needing an
+#: attention-grabbing color competing against 60-some other cells on screen.
+#: rgb is ARGB (opaque alpha "FF" + RRGGBB).
+_HIGHLIGHT_FONT = InlineFont(b=True, u="single")
+_DIM_FONT = InlineFont(color=Color(rgb="FF9A9A9A"))
 
 
 def _cell_value(value: Any) -> Any:
@@ -48,8 +50,8 @@ def _cell_value(value: Any) -> Any:
     if not isinstance(value, str) or _HIGHLIGHT_MARKER not in value:
         return value
     parts = value.split(_HIGHLIGHT_MARKER)
-    blocks: list[str | TextBlock] = [
-        TextBlock(_HIGHLIGHT_FONT, part) if i % 2 else part for i, part in enumerate(parts) if part
+    blocks: list[TextBlock] = [
+        TextBlock(_HIGHLIGHT_FONT if i % 2 else _DIM_FONT, part) for i, part in enumerate(parts) if part
     ]
     return CellRichText(*blocks) if blocks else ""
 
