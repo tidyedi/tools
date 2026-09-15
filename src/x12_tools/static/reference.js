@@ -98,7 +98,7 @@
     function render() {
       const rows = currentRows();
       document.getElementById("seg-count-line").textContent =
-        `Showing ${rows.length} of ${SEGMENT_ROWS.length} segments.`;
+        `Showing ${rows.length} of ${SEGMENT_ROWS.length} segments. Source: X12.`;
       segTbody.innerHTML = "";
 
       const renderRow = (r) => {
@@ -191,7 +191,7 @@
       const rows = currentRows();
       const segmentCount = new Set(rows.map((r) => r.segment)).size;
       document.getElementById("el-count-line").textContent =
-        `Showing ${rows.length} of ${ELEMENT_ROWS.length} elements, across ${segmentCount} segments.`;
+        `Showing ${rows.length} of ${ELEMENT_ROWS.length} elements, across ${segmentCount} segments. Source: X12.`;
       elTbody.innerHTML = "";
 
       const renderRow = (r) =>
