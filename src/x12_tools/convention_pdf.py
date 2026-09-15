@@ -352,7 +352,15 @@ def _parse_segment_details(lines: list[str]) -> dict[str, ConventionSegmentDetai
                 in_codes = False
                 continue
             if stripped == "Code Name":
-                in_codes = True
+                # Only ID-type elements carry a code list in the X12 standard
+                # itself -- a DT/TM/AN/R/N-type element never does. A
+                # multi-column PDF's text extraction can interleave a code
+                # list after a later, uncoded element's own row (pdftotext
+                # has no notion of the PDF's visual columns), which would
+                # otherwise attach someone else's codes to this element.
+                # Safer to drop an unattributable code list than guess whose
+                # it actually was.
+                in_codes = current is not None and current.data_type == "ID"
                 continue
             if stripped.startswith(("Syntax Rules:", "Semantics:", "Comments:")):
                 in_codes = False

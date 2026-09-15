@@ -98,3 +98,31 @@ Element Summary:
     codes = {c.code: c.name for c in br01.codes}
     # the DLMS Note between "77" and "ZZ" must not truncate the code list
     assert codes == {"00": "Original", "77": "Simulation Exercise", "ZZ": "Mutually Defined"}
+
+
+def test_parse_segment_details_never_attaches_codes_to_a_non_id_element() -> None:
+    # A two-column DLA PDF's text extraction has no notion of the source
+    # PDF's visual columns, so a code list can end up interleaved after a
+    # later, uncoded element's own row instead of right after the ID-type
+    # element it actually belongs to. Here N901 is the real ID-type owner,
+    # but the code list appears after N904 (Date, a DT-type element that can
+    # never legitimately have one) -- it must not get attached to N904.
+    lines = """
+                                                                                                                 Pos: 30                          Max: 1
+N9 Extended Reference Information                                                                                          Heading - Used
+
+Element Summary:
+   Ref             Id         Element Name                                                Req        Type        Min/Max                 Usage
+   N901            128        Reference Identification Qualifier                          M          ID             2/3                Must use
+   N904            373        Date                                                         O          DT             8/8                   Used
+
+                              Code Name
+                              ON     Attached To
+                              BT     Batch Number
+""".splitlines()
+
+    details = _parse_segment_details(lines)
+
+    n904 = next(e for e in details["N9"].elements if e.ref == "N904")
+    assert n904.data_type == "DT"
+    assert n904.codes == []
