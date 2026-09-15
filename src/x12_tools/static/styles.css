@@ -43,21 +43,14 @@ body {
 
 .navbar { border-bottom: 1px solid var(--border); background: var(--panel); }
 .navbar .wrap { display: flex; align-items: center; gap: 20px; padding-block: 12px; }
-.nav-brand { font-weight: 700; text-decoration: none; color: var(--text); }
+.nav-brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; text-decoration: none; color: var(--text); }
+.nav-brand img { border-radius: 4px; }
 .nav-link { text-decoration: none; color: var(--text-dim); }
 .nav-link.active, .nav-link:hover { color: var(--text); }
 
 .site-header { padding-block: 32px 8px; }
 .site-header h1 { margin: 0 0 8px; font-size: 1.8rem; }
 .tagline { color: var(--text-dim); max-width: 64ch; }
-
-/* The icon+wordmark lockup, hub page only -- mirrors x12-tidy-web's own
-   header treatment (bold product name, icon square) rather than putting a
-   logo in the nav bar, which x12-tidy-web doesn't do either. */
-.brand-lockup { display: flex; align-items: center; gap: 12px; }
-.brand-lockup img { border-radius: 8px; }
-.brand-name { font-weight: 700; }
-.brand-suffix { font-weight: 400; color: var(--text-dim); }
 
 main { padding-block: 16px 48px; }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ page_title | default("x12-tools") }}</title>
+  <title>{{ page_title | default("X12 Tools") }}</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
@@ -11,11 +11,7 @@
 <nav class="navbar" aria-label="Site"><div class="wrap">{% include "_nav.html" %}</div></nav>
 <header class="site-header">
   <div class="wrap">
-    <h1 class="brand-lockup">
-      <img src="/static/favicon.svg" alt="" width="40" height="40">
-      <span class="brand-name">x12-tools</span>
-      {% if heading_suffix %}<span class="brand-suffix">{{ heading_suffix }}</span>{% endif %}
-    </h1>
+    <h1>{{ heading | default("X12 Tools") }}</h1>
     <p class="tagline">
       {{ tagline | default("Small, standalone online tools for working with ANSI X12 EDI. Nothing you paste is stored, logged, or sent anywhere.") }}
     </p>

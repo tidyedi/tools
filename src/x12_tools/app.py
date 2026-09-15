@@ -256,8 +256,8 @@ def create_app() -> FastAPI:
                 "app_version": __version__,
                 "tools": TOOLS + OWNER_TOOLS,
                 "current": None,
-                "page_title": "x12-tools — owner",
-                "heading_suffix": "(owner)",
+                "page_title": "X12 Tools — owner",
+                "heading": "X12 Tools (owner)",
                 "tagline": (
                     "Small, standalone online tools for working with ANSI X12 EDI. "
                     "This page isn't linked publicly -- keep the URL to yourself."
