@@ -101,12 +101,28 @@
     return cell;
   }
 
+  // Whether this occurrence's value length falls within its element's own
+  // min/max -- x12-tidy's cleanse already fixed structural issues upstream,
+  // this just surfaces the definition's own bounds so a reviewer can spot a
+  // value that's still short or long for its position at a glance.
+  function lengthOk(o) {
+    return o.value.length >= o.min_length && o.value.length <= o.max_length;
+  }
+  function lengthStatus(o) {
+    const len = o.value.length;
+    if (len < o.min_length) return `Short (${len})`;
+    if (len > o.max_length) return `Long (${len})`;
+    return "OK";
+  }
+
   const COLUMNS = [
     { key: "ref", label: "Ref", get: (o) => `${o.segment_id}${String(o.position).padStart(2, "0")}` },
     { key: "name", label: "Name", get: (o) => o.name },
     { key: "requirement", label: "Req", get: (o) => o.requirement },
+    { key: "data_type", label: "Type", get: (o) => o.data_type },
     { key: "min_length", label: "Min", get: (o) => o.min_length, numeric: true },
     { key: "max_length", label: "Max", get: (o) => o.max_length, numeric: true },
+    { key: "len_status", label: "Len", get: lengthStatus },
     { key: "value", label: "Value", get: (o) => o.value },
   ];
 
@@ -125,12 +141,12 @@
     }
 
     const fileOrder = occurrences.map((o, i) => ({ o, i }));
-    const filters = { ref: "", name: "", requirement: "", value: "" };
+    const filters = { ref: "", name: "", requirement: "", data_type: "", len_status: "", value: "" };
     let sort = null; // { key, dir: 1 | -1 } | null (null = original file order)
 
     const filterBar = el("div", { class: "filter-bar" });
     const filterInputs = {};
-    for (const key of ["ref", "name", "requirement", "value"]) {
+    for (const key of ["ref", "name", "requirement", "data_type", "len_status", "value"]) {
       const label = COLUMNS.find((c) => c.key === key)?.label || key;
       const wrapLabel = el("label", { class: "inline" }, [el("span", { text: `${label}:` })]);
       const input = el("input", { type: "text", placeholder: "filter…" });
@@ -197,6 +213,8 @@
         if (filters.ref && !COLUMNS[0].get(o).toLowerCase().includes(filters.ref)) return false;
         if (filters.name && !o.name.toLowerCase().includes(filters.name)) return false;
         if (filters.requirement && !o.requirement.toLowerCase().includes(filters.requirement)) return false;
+        if (filters.data_type && !o.data_type.toLowerCase().includes(filters.data_type)) return false;
+        if (filters.len_status && !lengthStatus(o).toLowerCase().includes(filters.len_status)) return false;
         if (filters.value && !o.value.toLowerCase().includes(filters.value)) return false;
         return true;
       });
@@ -218,10 +236,14 @@
         ? `Showing ${rows.length} of ${occurrences.length} rows, sorted by ${sort.key} (${sort.dir > 0 ? "asc" : "desc"}).`
         : `Showing ${rows.length} of ${occurrences.length} rows, in file order.`;
       tbody.innerHTML = "";
+      const MONO_COLUMNS = new Set(["ref", "requirement", "data_type", "min_length", "max_length", "len_status"]);
       for (const o of rows) {
-        const cells = COLUMNS.map((col) =>
-          el("td", { text: String(col.get(o)), class: col.numeric || col.key === "ref" || col.key === "requirement" ? "mono" : "" })
-        );
+        const cells = COLUMNS.map((col) => {
+          const classes = [];
+          if (MONO_COLUMNS.has(col.key)) classes.push("mono");
+          if (col.key === "len_status" && !lengthOk(o)) classes.push("len-bad");
+          return el("td", { text: String(col.get(o)), class: classes.join(" ") });
+        });
         cells.push(rawSegmentCell(o, separator));
         tbody.appendChild(el("tr", {}, cells));
       }

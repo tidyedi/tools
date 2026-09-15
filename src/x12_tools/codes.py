@@ -50,6 +50,7 @@ class ElementOccurrence:
     position: int  # 1-based, matching X12's own element numbering
     name: str
     requirement: str  # this element's own M/O/C within the segment
+    data_type: str  # X12 data type code, e.g. "ID", "AN", "DT", "TM"
     min_length: int
     max_length: int
     value: str
@@ -64,6 +65,7 @@ class ElementOccurrence:
             "position": self.position,
             "name": self.name,
             "requirement": self.requirement,
+            "data_type": self.data_type,
             "min_length": self.min_length,
             "max_length": self.max_length,
             "value": self.value,
@@ -127,6 +129,7 @@ def build_code_inventory(payload: bytes) -> CodeInventory:
                     position,
                     definition.name,
                     definition.requirement,
+                    definition.data_type,
                     definition.min_length,
                     definition.max_length,
                     value,
