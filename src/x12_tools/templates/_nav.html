@@ -1,5 +1,9 @@
-<a class="nav-brand" href="/">X12 Tools</a>
+<a class="nav-brand" href="/"><img src="/static/favicon.svg" alt="" width="20" height="20"> X12 Tools</a>
 <a class="nav-link{{ ' active' if current == 'segments' else '' }}" href="/segments">Segment inventory</a>
 <a class="nav-link{{ ' active' if current == 'codes' else '' }}" href="/codes">Code inventory</a>
 <a class="nav-link{{ ' active' if current == 'convention' else '' }}" href="/convention">Convention importer</a>
 <a class="nav-link{{ ' active' if current == 'reference' else '' }}" href="/reference">Reference data</a>
+<!-- Mirrors the "x12-tidy-web" entry in app.py's TOOLS -- the nav is included
+     on every page, not just the hub, so it can't read that list's url field
+     directly; keep this in sync if that URL ever changes. -->
+<a class="nav-link" href="https://repair.tidyedi.com/" target="_blank" rel="noopener">EDI Repair <span class="external-mark" aria-hidden="true">&#8599;</span></a>

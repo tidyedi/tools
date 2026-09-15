@@ -32,7 +32,9 @@
       column in the convention table. <strong>Has elements</strong> shows
       whether that segment also has a full position-by-position breakdown
       below, in Element definitions -- "No" just means the breakdown hasn't
-      been added yet, not that the segment name is wrong.
+      been added yet, not that the segment name is wrong. <strong>Source</strong>
+      is "X12" for every row here -- cross-checked against Stedi's public X12
+      reference (see segment_names.py's docstring).
     </p>
     <div class="filter-bar">
       <label class="inline"><span>Segment:</span> <input type="text" id="seg-filter-segment" placeholder="filter…"></label>
@@ -45,6 +47,7 @@
           <option value="no">No</option>
         </select>
       </label>
+      <label class="inline"><span>Source:</span> <input type="text" id="seg-filter-source" placeholder="filter…"></label>
       <label class="inline"><input type="checkbox" id="seg-group-by-letter"> <span>Roll up by first letter</span></label>
       <span id="seg-download"></span>
     </div>
@@ -58,6 +61,7 @@
               <th class="sortable" data-key="name">Name</th>
               <th class="sortable" data-key="release">Release</th>
               <th class="sortable" data-key="has_elements">Has elements</th>
+              <th class="sortable" data-key="source">Source</th>
             </tr>
           </thead>
           <tbody id="seg-tbody"></tbody>
@@ -73,7 +77,7 @@
       length of -- what the Code inventory tool scans for and what a
       convention table's Segment name column pre-fills from.
       <strong>Source</strong> is "x12-tools" for definitions hand-curated
-      from DLA convention PDFs and general X12 004010 knowledge, or "Stedi"
+      from DLA convention PDFs and general X12 004010 knowledge, or "X12"
       for the 2026 backfill sourced from Stedi's public X12 reference.
     </p>
     <div class="filter-bar">

@@ -35,7 +35,7 @@
   // --- Segment names table ------------------------------------------------
 
   (function setupSegmentTable() {
-    const filters = { segment: "", name: "", has_elements: "all" };
+    const filters = { segment: "", name: "", has_elements: "all", source: "" };
     let sort = null;
     let groupByLetter = false;
 
@@ -49,6 +49,10 @@
     });
     document.getElementById("seg-filter-has-elements").addEventListener("change", (e) => {
       filters.has_elements = e.target.value;
+      render();
+    });
+    document.getElementById("seg-filter-source").addEventListener("input", (e) => {
+      filters.source = e.target.value.trim().toLowerCase();
       render();
     });
     document.getElementById("seg-group-by-letter").addEventListener("change", (e) => {
@@ -67,6 +71,7 @@
       { label: "Name", get: (r) => r.name },
       { label: "Release", get: (r) => r.release },
       { label: "Has elements", get: (r) => (r.has_elements ? "Yes" : "No") },
+      { label: "Source", get: (r) => r.source },
     ];
     downloadWrap.appendChild(downloadControl(() => currentRows(), columns, "segment-names"));
 
@@ -76,6 +81,7 @@
         if (filters.name && !r.name.toLowerCase().includes(filters.name)) return false;
         if (filters.has_elements === "yes" && !r.has_elements) return false;
         if (filters.has_elements === "no" && r.has_elements) return false;
+        if (filters.source && !r.source.toLowerCase().includes(filters.source)) return false;
         return true;
       });
       return applySort(rows, sort);
@@ -93,6 +99,7 @@
           el("td", { text: r.name }),
           el("td", { text: r.release, class: "mono" }),
           el("td", { text: r.has_elements ? "Yes" : "No" }),
+          el("td", { text: r.source }),
         ]);
 
       if (groupByLetter) {
@@ -105,7 +112,7 @@
         for (const [letter, groupRows] of groups) {
           segTbody.appendChild(
             el("tr", { class: "loop-group-row" }, [
-              el("td", { text: `${letter} (${groupRows.length})`, colspan: "4" }),
+              el("td", { text: `${letter} (${groupRows.length})`, colspan: "5" }),
             ])
           );
           for (const r of groupRows) segTbody.appendChild(renderRow(r));

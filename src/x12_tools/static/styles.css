@@ -43,7 +43,8 @@ body {
 
 .navbar { border-bottom: 1px solid var(--border); background: var(--panel); }
 .navbar .wrap { display: flex; align-items: center; gap: 20px; padding-block: 12px; }
-.nav-brand { font-weight: 700; text-decoration: none; color: var(--text); }
+.nav-brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; text-decoration: none; color: var(--text); }
+.nav-brand img { border-radius: 4px; }
 .nav-link { text-decoration: none; color: var(--text-dim); }
 .nav-link.active, .nav-link:hover { color: var(--text); }
 
@@ -77,6 +78,14 @@ textarea#edi {
 .inline { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; }
 .file-pick { position: relative; overflow: hidden; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
 .file-pick input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+/* Unstyled <select>/<button> don't inherit color/font from the page in the
+   UA stylesheet -- without this, #sample-select falls back to the
+   browser's own default control color, which can render too low-contrast
+   to read against --panel (looks disabled even though it works). */
+.controls select {
+  font: inherit; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--panel); color: var(--text);
+}
 
 button, .button-link {
   font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border);

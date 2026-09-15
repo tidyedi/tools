@@ -110,6 +110,14 @@ TOOLS: list[dict[str, str]] = [
     },
 ]
 
+#: element_source() and segment_names.py both track/derive from "Stedi" --
+#: the public reference tables show that as "X12" instead (it's Stedi's
+#: public *X12* reference, and "X12" is the more meaningful label for
+#: someone checking coverage, not "which third-party site did this pass
+#: through"). Anything not in this map is shown as element_source() returns
+#: it (currently just "x12-tools", for hand-curated definitions).
+_DISPLAY_SOURCE: dict[str, str] = {"Stedi": "X12"}
+
 #: Owner-only tools, shown at /tools/owner instead of on the public hub.
 #: Same shape as TOOLS (slug/title/blurb, or url for an external link). Give
 #: each entry's own page a route under /tools/owner/<slug> -- the
@@ -192,6 +200,11 @@ def create_app() -> FastAPI:
                 "name": name,
                 "release": RELEASE,
                 "has_elements": segment_id in segment_ids_with_elements,
+                # segment_names.py is cross-checked against Stedi's public X12
+                # reference for every entry (see its module docstring) -- there's
+                # no per-segment split the way element_source() tracks below, so
+                # the whole table gets the same public-facing source label.
+                "source": _DISPLAY_SOURCE["Stedi"],
             }
             for segment_id, name in sorted(SEGMENT_NAMES.items())
         ]
@@ -206,7 +219,7 @@ def create_app() -> FastAPI:
                 "min_length": e.min_length,
                 "max_length": e.max_length,
                 "release": RELEASE,
-                "source": element_source(segment_id),
+                "source": _DISPLAY_SOURCE.get(element_source(segment_id), element_source(segment_id)),
             }
             for segment_id, elements in sorted(SEGMENT_ELEMENTS.items())
             for e in elements
