@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Convention comparator — X12 Tools</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<nav class="navbar" aria-label="Site"><div class="wrap">{% include "_nav.html" %}</div></nav>
+<header class="site-header">
+  <div class="wrap">
+    <h1>Convention comparator</h1>
+    <p class="tagline">
+      Upload two or more DLA/DLMS-style implementation convention PDFs --
+      suffix variants of the same base transaction set (315A vs 315B vs
+      315N, say) -- and see exactly what differs between them: segment
+      requirement/usage/notes changes, a segment present in one but not
+      another, an element's type or min/max, or a code added or dropped
+      from a qualifier's list. Matched by each file's own position/ref
+      numbering, not row order, so the comparison holds even if a
+      convention's rows shifted around.
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="privacy">
+    <strong>Nothing you upload is stored, logged, or sent anywhere.</strong>
+    Every PDF is parsed in memory and forgotten once the response is returned.
+  </p>
+  <p class="hint">
+    Same best-effort DLA-IC-format parsing as
+    <a href="/convention">Convention importer</a> -- a convention from a
+    different publisher or generator may parse only partially, or not at all.
+  </p>
+
+  <form id="compare-form">
+    <label for="pdf-file" class="field-label">Convention PDFs to compare</label>
+    <div class="controls">
+      <label class="inline file-pick">
+        <input type="file" id="pdf-file" accept="application/pdf,.pdf" multiple required>
+        <span>Choose PDFs…</span>
+      </label>
+      <button type="submit" id="submit-btn" class="primary">Compare conventions</button>
+      <button type="button" id="clear-btn" class="ghost">Clear</button>
+    </div>
+    <p class="hint">At least 2 files. Up to {{ "{:,}".format(max_pdf_bytes) }} bytes per file.</p>
+    <p id="form-error" class="form-error" hidden></p>
+  </form>
+
+  <section id="results" hidden aria-live="polite"></section>
+</main>
+
+<footer class="wrap site-footer">
+  {% include "_nav.html" %}
+  <p>x12-tools {{ app_version }} · nothing you upload is stored or logged</p>
+</footer>
+
+<script src="/static/table-tools.js"></script>
+<script src="/static/compare.js"></script>
+</body>
+</html>

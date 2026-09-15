@@ -12,6 +12,7 @@ Routes:
 * ``GET  /reference``     -- what's in segment_names.py and element_definitions.py, browsable.
 * ``GET  /convention``    -- the convention-PDF importer tool page.
 * ``POST /api/convention``-- parse an uploaded DLA/DLMS convention PDF into a segment table and per-segment element/code detail.
+* ``GET  /compare``       -- the convention-comparator tool page (2+ PDFs -> what differs between them). Reuses POST /api/convention; nothing server-side is specific to comparing.
 * ``POST /api/export/xlsx``-- turn a table's current (filtered/sorted) rows into a real .xlsx workbook.
 * ``GET  /tools/owner``   -- a second hub page for owner-only tools (see OWNER_TOOLS below). Not linked from anywhere public; reachable only by knowing the URL.
 * ``GET  /healthz``       -- liveness probe.
@@ -85,6 +86,18 @@ TOOLS: list[dict[str, str]] = [
             "segment table plus every element's definition and code meanings, "
             "extracted straight from the document -- a starting point for "
             "building a convention table without retyping it by hand."
+        ),
+    },
+    {
+        "slug": "compare",
+        "title": "Convention comparator",
+        "blurb": (
+            "Upload two or more DLA/DLMS-style convention PDFs -- suffix "
+            "variants of the same base transaction set (315A vs 315B vs "
+            "315N, say) -- and see exactly what differs between them: "
+            "segment requirement/usage changes, a segment present in one "
+            "but not another, an element's type or min/max, or a code "
+            "added or dropped from a qualifier's list."
         ),
     },
     {
@@ -244,6 +257,14 @@ def create_app() -> FastAPI:
             request,
             "convention.html",
             {"app_version": __version__, "max_pdf_bytes": MAX_PDF_BYTES, "current": "convention"},
+        )
+
+    @app.get("/compare", response_class=HTMLResponse)
+    def compare_page(request: Request) -> HTMLResponse:
+        return _TEMPLATES.TemplateResponse(
+            request,
+            "compare.html",
+            {"app_version": __version__, "max_pdf_bytes": MAX_PDF_BYTES, "current": "compare"},
         )
 
     @app.get("/tools/owner", response_class=HTMLResponse)
