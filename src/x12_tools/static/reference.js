@@ -143,11 +143,11 @@
 
   (function setupElementTable() {
     const elTbody = document.getElementById("el-tbody");
-    const filters = { ref: "", name: "", requirement: "", data_type: "", source: "" };
+    const filters = { ref: "", name: "", requirement: "", data_type: "" };
     let sort = null;
     let groupBySegment = true;
 
-    for (const key of ["ref", "name", "requirement", "data_type", "source"]) {
+    for (const key of ["ref", "name", "requirement", "data_type"]) {
       document.getElementById(`el-filter-${key}`).addEventListener("input", (e) => {
         filters[key] = e.target.value.trim().toLowerCase();
         render();
@@ -182,7 +182,6 @@
         if (filters.name && !r.name.toLowerCase().includes(filters.name)) return false;
         if (filters.requirement && !r.requirement.toLowerCase().includes(filters.requirement)) return false;
         if (filters.data_type && !r.data_type.toLowerCase().includes(filters.data_type)) return false;
-        if (filters.source && !r.source.toLowerCase().includes(filters.source)) return false;
         return true;
       });
       return applySort(rows, sort);
@@ -204,7 +203,6 @@
           el("td", { text: String(r.min_length), class: "mono" }),
           el("td", { text: String(r.max_length), class: "mono" }),
           el("td", { text: r.release, class: "mono" }),
-          el("td", { text: r.source }),
         ]);
 
       if (groupBySegment) {
@@ -216,7 +214,7 @@
         for (const [segment, groupRows] of groups) {
           elTbody.appendChild(
             el("tr", { class: "loop-group-row" }, [
-              el("td", { text: `${segment} (${groupRows.length})`, colspan: "8" }),
+              el("td", { text: `${segment} (${groupRows.length})`, colspan: "7" }),
             ])
           );
           for (const r of groupRows) elTbody.appendChild(renderRow(r));
